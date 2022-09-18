@@ -7,8 +7,12 @@ target_include_directories(antartar PRIVATE ${ANTARTAR_INCLUDE_DIR})
 target_sources(
     antartar
     PRIVATE
-    main.cpp
+    ${ANTARTAR_INCLUDE_DIR}/antartar/app.hpp
+    ${ANTARTAR_INCLUDE_DIR}/antartar/log.hpp
+    ${ANTARTAR_INCLUDE_DIR}/antartar/vk.hpp
+    ${ANTARTAR_INCLUDE_DIR}/antartar/window.hpp
     app.cpp
+    main.cpp
     window.cpp
 )
 
