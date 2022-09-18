@@ -1,10 +1,9 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 #include <stdexcept>
 #include <fmt/format.h>
 #include <antartar/log.hpp>
+#include <antartar/vk.hpp>
 
 namespace antartar
 {
@@ -30,6 +29,8 @@ namespace antartar
 	public:
 		scoped_glfw3_window(auto ... args)
 		{
+			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // make glfw skip creating default openGL context
+			glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 			window_ = glfwCreateWindow(args..., nullptr, nullptr);
 			if (nullptr == window_)
 			{
@@ -50,6 +51,7 @@ namespace antartar
 	private:
 		scoped_glfw3 glfw_;
 		scoped_glfw3_window glfw_window_;
+		vk vulkan_;
 	public:
 		inline window(auto width, auto height, const std::string& title) : glfw_window_(width, height, title.c_str())
 		{

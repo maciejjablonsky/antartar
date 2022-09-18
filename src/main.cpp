@@ -9,8 +9,9 @@ int main()
 		antartar::app app;
 		app.run();
 	}
-	catch (...)
+	catch (const std::exception&e)
 	{
+		fmt::print("{}\n", e.what());
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

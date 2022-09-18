@@ -12,11 +12,17 @@ target_sources(
     window.cpp
 )
 
-find_package(fmt REQUIRED)
+find_package(fmt REQUIRED CONFIG)
 target_link_libraries(antartar PRIVATE fmt::fmt)
 
-find_package(Vulkan REQUIRED)
+find_package(Vulkan REQUIRED CONFIG)
 target_link_libraries(antartar PRIVATE Vulkan::Vulkan)
 
-find_package(glfw3 REQUIRED)
+find_package(glfw3 REQUIRED CONFIG)
 target_link_libraries(antartar PRIVATE glfw)
+
+find_package(Microsoft.GSL REQUIRED CONFIG)
+target_link_libraries(antartar PRIVATE Microsoft.GSL::GSL)
+
+find_package(range-v3 REQUIRED CONFIG)
+target_link_libraries(antartar PRIVATE range-v3::range-v3)
