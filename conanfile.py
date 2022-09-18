@@ -23,6 +23,7 @@ class AntartarConanFile(ConanFile):
     def requirements(self):
         self.requires("vulkan-loader/1.3.224.0")
         self.requires("fmt/9.1.0")
+        self.requires("glfw/3.3.8")
 
     def build(self):
         cmake = CMake(self)

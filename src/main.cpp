@@ -1,12 +1,12 @@
 #include <fmt/format.h>
-#include <antartar/app.h>
+#include <antartar/app.hpp>
 
 int main()
 {
 	fmt::print("hello ocean of antartar\n");
 
 	try {
-		antartar::App app;
+		antartar::app app;
 		app.run();
 	}
 	catch (...)
