@@ -2,8 +2,9 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <gsl/gsl>
-#include <vector>
+#include <optional>
 #include <range/v3/all.hpp>
+#include <vector>
 
 namespace antartar::vk
 {
@@ -55,6 +56,40 @@ namespace antartar::vk
 		{
 			func(instance, debug_messenger, allocator);
 		}
+	}
+
+	struct queue_family_indices {
+		std::optional<uint32_t> graphics_family;
+
+		inline auto is_complete() const {
+			return graphics_family.has_value();
+		}
+
+	};
+
+	inline auto find_queue_families(VkPhysicalDevice device)
+	{
+		queue_family_indices indices;
+
+		uint32_t queue_family_count = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(
+			device,
+			std::addressof(queue_family_count),
+			nullptr);
+		std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+		vkGetPhysicalDeviceQueueFamilyProperties(
+			device,
+			std::addressof(queue_family_count),
+			queue_families.data());
+	
+		for (const auto& [i, family] : queue_families | ranges::view::enumerate)
+		{
+			// pick graphics family
+			if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+				indices.graphics_family = static_cast<uint32_t>(i);
+			}
+		}
+		return indices;
 	}
 
 	class vk {
@@ -198,7 +233,8 @@ namespace antartar::vk
 
 		inline auto is_device_suitable_(VkPhysicalDevice device)
 		{
-			return true;
+			auto indices = find_queue_families(device);
+			return indices.is_complete();
 		}
 
 
@@ -215,7 +251,7 @@ namespace antartar::vk
 			std::vector<VkPhysicalDevice> devices(device_count);
 			vkEnumeratePhysicalDevices(instance_, std::addressof(device_count), devices.data());
 
-			auto find_physical_device = [this](const auto &devices) {
+			auto find_physical_device = [this](const auto& devices) {
 				return ranges::find_if(devices, [this](VkPhysicalDevice device) {
 					return is_device_suitable_(device);
 				});
