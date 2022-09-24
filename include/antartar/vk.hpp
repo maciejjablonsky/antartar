@@ -81,7 +81,7 @@ namespace antartar::vk
 			device,
 			std::addressof(queue_family_count),
 			queue_families.data());
-	
+
 		for (const auto& [i, family] : queue_families | ranges::view::enumerate)
 		{
 			// pick graphics family
@@ -97,6 +97,8 @@ namespace antartar::vk
 		VkInstance instance_ = VK_NULL_HANDLE;
 		VkDebugUtilsMessengerEXT debug_messenger_ = VK_NULL_HANDLE;
 		VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;
+		VkDevice device_ = VK_NULL_HANDLE;
+		VkQueue graphics_queue_ = VK_NULL_HANDLE;
 
 		inline bool check_validation_layer_support()
 		{
@@ -254,7 +256,7 @@ namespace antartar::vk
 			auto find_physical_device = [this](const auto& devices) {
 				return ranges::find_if(devices, [this](VkPhysicalDevice device) {
 					return is_device_suitable_(device);
-				});
+					});
 			};
 
 			if (auto result = find_physical_device(devices); result != devices.end())
@@ -267,16 +269,47 @@ namespace antartar::vk
 			}
 		}
 
+		void create_logical_device_()
+		{
+			auto indices = find_queue_families(physical_device_);
+			VkDeviceQueueCreateInfo queue_create_info{};
+			queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			queue_create_info.queueFamilyIndex = *indices.graphics_family;
+			queue_create_info.queueCount = 1;
+
+			auto queue_priority = 1.0f;
+			queue_create_info.pQueuePriorities = std::addressof(queue_priority);
+
+			VkPhysicalDeviceFeatures device_features{};
+			VkDeviceCreateInfo create_info{};
+			create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+			create_info.pQueueCreateInfos = std::addressof(queue_create_info);
+			create_info.queueCreateInfoCount = 1;
+			create_info.pEnabledFeatures = std::addressof(device_features);
+
+			if (VK_SUCCESS != vkCreateDevice(
+				physical_device_,
+				std::addressof(create_info),
+				nullptr,
+				std::addressof(device_)))
+			{
+				throw std::runtime_error(log_message("failed to create logical device!"));
+			}
+			vkGetDeviceQueue(device_, indices.graphics_family.value(), 0, std::addressof(graphics_queue_));
+		}
+
 	public:
 		inline vk()
 		{
 			create_instance_();
 			setup_debug_messenger_();
 			pick_physical_device_();
+			create_logical_device_();
 		}
 
 		inline ~vk()
 		{
+			vkDestroyDevice(device_, nullptr);
 			if (enable_validation_layers)
 			{
 				DestroyDebugUtilsMessengerEXT(instance_, debug_messenger_, nullptr);
