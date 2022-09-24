@@ -59,8 +59,9 @@ namespace antartar::vk
 
 	class vk {
 	private:
-		VkInstance instance_ = nullptr;
-		VkDebugUtilsMessengerEXT debug_messenger_ = nullptr;
+		VkInstance instance_ = VK_NULL_HANDLE;
+		VkDebugUtilsMessengerEXT debug_messenger_ = VK_NULL_HANDLE;
+		VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;
 
 		inline bool check_validation_layer_support()
 		{
@@ -195,12 +196,47 @@ namespace antartar::vk
 			}
 		}
 
+		inline auto is_device_suitable_(VkPhysicalDevice device)
+		{
+			return true;
+		}
+
+
+
+		inline auto pick_physical_device_()
+		{
+			uint32_t device_count = 0;
+			vkEnumeratePhysicalDevices(instance_, std::addressof(device_count), nullptr);
+			if (0 == device_count)
+			{
+				throw std::runtime_error(log_message("failed to find GPUs with Vulkan support!"));
+			}
+
+			std::vector<VkPhysicalDevice> devices(device_count);
+			vkEnumeratePhysicalDevices(instance_, std::addressof(device_count), devices.data());
+
+			auto find_physical_device = [this](const auto &devices) {
+				return ranges::find_if(devices, [this](VkPhysicalDevice device) {
+					return is_device_suitable_(device);
+				});
+			};
+
+			if (auto result = find_physical_device(devices); result != devices.end())
+			{
+				physical_device_ = *result;
+			}
+			else
+			{
+				throw std::runtime_error(log_message("failed to find suitable GPU!"));
+			}
+		}
 
 	public:
 		inline vk()
 		{
 			create_instance_();
 			setup_debug_messenger_();
+			pick_physical_device_();
 		}
 
 		inline ~vk()
