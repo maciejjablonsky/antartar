@@ -40,7 +40,8 @@ class AntartarConanFile(ConanFile):
         self.requires("ms-gsl/4.0.0")
         self.requires("range-v3/0.12.0")
         self.requires("vulkan-loader/1.3.216.0")
-        self.requires("vulkan-validationlayers/1.3.216.0")
+        if self.settings.build_type == "Debug":
+            self.requires("vulkan-validationlayers/1.3.216.0")
 
 
     def build(self):

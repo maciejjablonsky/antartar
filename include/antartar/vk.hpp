@@ -104,7 +104,25 @@ namespace antartar::vk
 			create_info.enabledLayerCount = 0;
 		}
 
-		inline void configure_validation_layers_(VkInstanceCreateInfo& create_info)
+		inline auto populate_debug_messenger_create_info_(
+			VkDebugUtilsMessengerCreateInfoEXT& create_info)
+		{
+			create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+			create_info.messageSeverity =
+				VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+				| VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+				| VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+			create_info.messageType =
+				VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+				| VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+				| VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+			create_info.pfnUserCallback = debug_callback;
+			create_info.pUserData = nullptr;
+		}
+
+		inline void configure_validation_layers_(
+			VkInstanceCreateInfo& create_info,
+			VkDebugUtilsMessengerCreateInfoEXT& debug_create_info)
 		{
 			if (enable_validation_layers && !check_validation_layer_support()) {
 				throw std::runtime_error(log_message("validation layers requested, but not available!"));
@@ -114,9 +132,14 @@ namespace antartar::vk
 			if (enable_validation_layers) {
 				create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
 				create_info.ppEnabledLayerNames = validation_layers.data();
+				populate_debug_messenger_create_info_(debug_create_info);
+				create_info.pNext = reinterpret_cast<
+					std::remove_cvref_t<decltype(debug_create_info)>*>(
+						std::addressof(debug_create_info));
 			}
 			else {
 				create_info.enabledLayerCount = 0;
+				create_info.pNext = nullptr;
 			}
 
 		}
@@ -141,7 +164,8 @@ namespace antartar::vk
 			VkInstanceCreateInfo create_info{};
 			create_info_(app_info, create_info);
 			log_available_extensions_();
-			configure_validation_layers_(create_info);
+			VkDebugUtilsMessengerCreateInfoEXT debug_create_info{};
+			configure_validation_layers_(create_info, debug_create_info);
 			auto extensions = get_required_extensions_();
 			create_info.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 			create_info.ppEnabledExtensionNames = extensions.data();
@@ -153,22 +177,13 @@ namespace antartar::vk
 			}
 		}
 
+
 		inline auto setup_debug_messenger_()
 		{
 			if (not enable_validation_layers) return;
 
 			VkDebugUtilsMessengerCreateInfoEXT create_info{};
-			create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-			create_info.messageSeverity =
-				VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
-				| VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
-				| VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-			create_info.messageType =
-				VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
-				| VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
-				| VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-			create_info.pfnUserCallback = debug_callback;
-			create_info.pUserData = nullptr;
+			populate_debug_messenger_create_info_(create_info);
 
 			if (VK_SUCCESS != CreateDebugUtilsMessengerEXT(
 				instance_,
