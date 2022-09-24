@@ -51,7 +51,7 @@ namespace antartar
 	private:
 		scoped_glfw3 glfw_;
 		scoped_glfw3_window glfw_window_;
-		vk vulkan_;
+		vk::vk vulkan_;
 	public:
 		inline window(auto width, auto height, const std::string& title) : glfw_window_(width, height, title.c_str())
 		{

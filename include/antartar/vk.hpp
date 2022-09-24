@@ -5,7 +5,7 @@
 #include <vector>
 #include <range/v3/all.hpp>
 
-namespace antartar
+namespace antartar::vk
 {
 	const std::array<const char*, 1> validation_layers = {
 		"VK_LAYER_KHRONOS_validation"
@@ -13,10 +13,54 @@ namespace antartar
 
 	constexpr bool enable_validation_layers = ANTARTAR_IS_DEBUG;
 
+	static inline VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
+		VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
+		VkDebugUtilsMessageTypeFlagsEXT message_type,
+		const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
+		void* user_data)
+	{
+
+		fmt::print(stderr, "validation layer: {}\n", callback_data->pMessage);
+		return VK_FALSE;
+	}
+
+	static inline VkResult CreateDebugUtilsMessengerEXT(
+		VkInstance instance,
+		const VkDebugUtilsMessengerCreateInfoEXT* create_info,
+		const VkAllocationCallbacks* allocator,
+		VkDebugUtilsMessengerEXT* debug_messenger)
+	{
+		constexpr auto func_name = "vkCreateDebugUtilsMessengerEXT"sv;
+		auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
+			vkGetInstanceProcAddr(instance, func_name.data()));
+		if (nullptr != func)
+		{
+			return func(instance, create_info, allocator, debug_messenger);
+		}
+		else
+		{
+			return VK_ERROR_EXTENSION_NOT_PRESENT;
+		}
+	}
+
+	static inline void DestroyDebugUtilsMessengerEXT(
+		VkInstance instance,
+		VkDebugUtilsMessengerEXT debug_messenger,
+		const VkAllocationCallbacks* allocator)
+	{
+		constexpr auto func_name = "vkDestroyDebugUtilsMessengerEXT"sv;
+		auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+			vkGetInstanceProcAddr(instance, func_name.data()));
+		if (nullptr != func)
+		{
+			func(instance, debug_messenger, allocator);
+		}
+	}
 
 	class vk {
 	private:
-		VkInstance instance_;
+		VkInstance instance_ = nullptr;
+		VkDebugUtilsMessengerEXT debug_messenger_ = nullptr;
 
 		inline bool check_validation_layer_support()
 		{
@@ -57,9 +101,6 @@ namespace antartar
 		{
 			create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 			create_info.pApplicationInfo = std::addressof(app_info);
-			uint32_t glfw_extensions_count = 0;
-			create_info.ppEnabledExtensionNames = glfwGetRequiredInstanceExtensions(std::addressof(glfw_extensions_count));
-			create_info.enabledExtensionCount = glfw_extensions_count;
 			create_info.enabledLayerCount = 0;
 		}
 
@@ -80,8 +121,20 @@ namespace antartar
 
 		}
 
-	public:
-		inline vk()
+		inline auto get_required_extensions_()
+		{
+			uint32_t glfw_extension_count = 0;
+			const char** glfw_extensions = nullptr;
+			glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
+			std::vector<const char*> extensions(glfw_extensions, glfw_extensions + glfw_extension_count);
+			if (enable_validation_layers)
+			{
+				extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+			}
+			return extensions;
+		}
+
+		inline auto create_instance_()
 		{
 			VkApplicationInfo app_info{};
 			init_app_info_(app_info);
@@ -89,6 +142,9 @@ namespace antartar
 			create_info_(app_info, create_info);
 			log_available_extensions_();
 			configure_validation_layers_(create_info);
+			auto extensions = get_required_extensions_();
+			create_info.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+			create_info.ppEnabledExtensionNames = extensions.data();
 
 
 			if (vkCreateInstance(std::addressof(create_info), nullptr, std::addressof(instance_)) != VK_SUCCESS)
@@ -97,8 +153,47 @@ namespace antartar
 			}
 		}
 
+		inline auto setup_debug_messenger_()
+		{
+			if (not enable_validation_layers) return;
+
+			VkDebugUtilsMessengerCreateInfoEXT create_info{};
+			create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+			create_info.messageSeverity =
+				VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+				| VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+				| VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+			create_info.messageType =
+				VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+				| VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+				| VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+			create_info.pfnUserCallback = debug_callback;
+			create_info.pUserData = nullptr;
+
+			if (VK_SUCCESS != CreateDebugUtilsMessengerEXT(
+				instance_,
+				std::addressof(create_info),
+				nullptr,
+				std::addressof(debug_messenger_)))
+			{
+				throw std::runtime_error(log_message("failed to set up debug messenger!"));
+			}
+		}
+
+
+	public:
+		inline vk()
+		{
+			create_instance_();
+			setup_debug_messenger_();
+		}
+
 		inline ~vk()
 		{
+			if (enable_validation_layers)
+			{
+				DestroyDebugUtilsMessengerEXT(instance_, debug_messenger_, nullptr);
+			}
 			vkDestroyInstance(instance_, nullptr);
 		}
 	};
