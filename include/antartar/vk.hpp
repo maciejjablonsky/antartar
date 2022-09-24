@@ -7,7 +7,7 @@
 
 namespace antartar
 {
-	const std::array<std::string_view, 1> validation_layers = {
+	const std::array<const char*, 1> validation_layers = {
 		"VK_LAYER_KHRONOS_validation"
 	};
 
@@ -31,7 +31,7 @@ namespace antartar
 				});
 		}
 
-		inline	void log_available_extensions() const
+		inline	void log_available_extensions_() const
 		{
 			uint32_t extension_count = 0;
 			vkEnumerateInstanceExtensionProperties(nullptr, std::addressof(extension_count), nullptr);
@@ -43,39 +43,52 @@ namespace antartar
 				});
 		}
 
-		VkApplicationInfo app_info_() const
+		inline	void init_app_info_(VkApplicationInfo& app_info) const
 		{
-			VkApplicationInfo app_info{};
 			app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 			app_info.pApplicationName = "antartar";
 			app_info.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
 			app_info.pEngineName = "no engine";
 			app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 			app_info.apiVersion = VK_API_VERSION_1_0;
-			return app_info;
 		}
 
-		VkInstanceCreateInfo create_info_() const
+		inline void create_info_(VkApplicationInfo& app_info, VkInstanceCreateInfo& create_info) const
 		{
-			auto app_info = app_info_();
-			VkInstanceCreateInfo create_info{};
 			create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 			create_info.pApplicationInfo = std::addressof(app_info);
 			uint32_t glfw_extensions_count = 0;
 			create_info.ppEnabledExtensionNames = glfwGetRequiredInstanceExtensions(std::addressof(glfw_extensions_count));
 			create_info.enabledExtensionCount = glfw_extensions_count;
 			create_info.enabledLayerCount = 0;
-			return create_info;
+		}
+
+		inline void configure_validation_layers_(VkInstanceCreateInfo& create_info)
+		{
+			if (enable_validation_layers && !check_validation_layer_support()) {
+				throw std::runtime_error(log_message("validation layers requested, but not available!"));
+			}
+
+			// NOTE: this probably overrides previous layers settings (if there is any), but for now it's fine
+			if (enable_validation_layers) {
+				create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
+				create_info.ppEnabledLayerNames = validation_layers.data();
+			}
+			else {
+				create_info.enabledLayerCount = 0;
+			}
+
 		}
 
 	public:
 		inline vk()
 		{
-			auto create_info = create_info_();
-			log_available_extensions();
-			if (enable_validation_layers && !check_validation_layer_support()) {
-				throw std::runtime_error(log_message("validation layers requested, but not available!"));
-			}
+			VkApplicationInfo app_info{};
+			init_app_info_(app_info);
+			VkInstanceCreateInfo create_info{};
+			create_info_(app_info, create_info);
+			log_available_extensions_();
+			configure_validation_layers_(create_info);
 
 
 			if (vkCreateInstance(std::addressof(create_info), nullptr, std::addressof(instance_)) != VK_SUCCESS)
