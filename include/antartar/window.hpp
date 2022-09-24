@@ -22,12 +22,12 @@ namespace antartar
 		}
 	};
 
-	class scoped_glfw3_window 
+	class scoped_glfw3_window
 	{
 	private:
 		GLFWwindow* window_ = nullptr;
 	public:
-		scoped_glfw3_window(auto ... args)
+		inline scoped_glfw3_window(auto ... args)
 		{
 			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // make glfw skip creating default openGL context
 			glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
@@ -38,7 +38,12 @@ namespace antartar
 			}
 		}
 
-		~scoped_glfw3_window()
+		inline auto glfw_window()
+		{
+			return window_;
+		}
+
+		inline ~scoped_glfw3_window()
 		{
 			if (nullptr != window_)
 			{
@@ -53,9 +58,11 @@ namespace antartar
 		scoped_glfw3_window glfw_window_;
 		vk::vk vulkan_;
 	public:
-		inline window(auto width, auto height, const std::string& title) : glfw_window_(width, height, title.c_str())
+		inline window(auto width, auto height, const std::string& title)
+			: glfw_window_(width, height, title.c_str()),
+			vulkan_(glfw_window_.glfw_window())
 		{
-			
+
 		}
 
 	};
