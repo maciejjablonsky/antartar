@@ -38,7 +38,7 @@ namespace antartar
 			}
 		}
 
-		inline auto glfw_window()
+		operator GLFWwindow* ()
 		{
 			return window_;
 		}
@@ -60,9 +60,14 @@ namespace antartar
 	public:
 		inline window(auto width, auto height, const std::string& title)
 			: glfw_window_(width, height, title.c_str()),
-			vulkan_(glfw_window_.glfw_window())
+			vulkan_(glfw_window_)
 		{
 
+		}
+
+		operator GLFWwindow* ()
+		{
+			return glfw_window_;
 		}
 
 	};

@@ -9,5 +9,10 @@ namespace antartar {
 		uint32_t extension_count = 0;
 		vkEnumerateInstanceExtensionProperties(nullptr, std::addressof(extension_count), nullptr);
 		log(fmt::format("vulkan supports {} extensions", extension_count));
+
+		while (!glfwWindowShouldClose(window_))
+		{
+			glfwPollEvents();
+		}
 	}
 }
