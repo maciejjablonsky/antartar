@@ -66,6 +66,12 @@ struct queue_family_indices {
     }
 };
 
+struct swap_chain_support_details {
+    VkSurfaceCapabilitiesKHR capabilities;
+    std::vector<VkSurfaceFormatKHR> formats;
+    std::vector<VkPresentModeKHR> present_modes;
+};
+
 class vk {
   private:
     VkInstance instance_                      = VK_NULL_HANDLE;
@@ -146,7 +152,7 @@ class vk {
         }
     }
 
-    inline auto find_queue_families_(VkPhysicalDevice device)
+    inline auto find_queue_families_(VkPhysicalDevice device) const
     {
         queue_family_indices indices;
 
@@ -180,7 +186,7 @@ class vk {
         return indices;
     }
 
-    inline auto check_device_extension_support_(VkPhysicalDevice device)
+    inline auto check_device_extension_support_(VkPhysicalDevice device) const
     {
         uint32_t extensions_count = 0;
         vkEnumerateDeviceExtensionProperties(device,
@@ -204,11 +210,59 @@ class vk {
         return required_extensions.empty();
     }
 
-    inline auto is_device_suitable_(VkPhysicalDevice device)
+    inline auto query_swap_chain_support_(VkPhysicalDevice device) const
     {
-        auto indices              = find_queue_families_(device);
-        auto extensions_supported = check_device_extension_support_(device);
-        return indices.is_complete() && extensions_supported;
+        swap_chain_support_details details;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+            device,
+            surface_,
+            std::addressof(details.capabilities));
+
+        uint32_t format_count = 0;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device,
+                                             surface_,
+                                             std::addressof(format_count),
+                                             nullptr);
+        if (format_count not_eq 0) {
+            details.formats.resize(format_count);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(device,
+                                                 surface_,
+                                                 std::addressof(format_count),
+                                                 details.formats.data());
+        }
+
+        uint32_t present_mode_count = 0;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(
+            device,
+            surface_,
+            std::addressof(present_mode_count),
+            nullptr);
+        if (present_mode_count not_eq 0) {
+            details.present_modes.resize(present_mode_count);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(
+                device,
+                surface_,
+                std::addressof(present_mode_count),
+                details.present_modes.data());
+        }
+        return details;
+    }
+
+    inline auto is_device_suitable_(VkPhysicalDevice device) const
+    {
+        auto indices = find_queue_families_(device);
+        const auto extensions_supported =
+            check_device_extension_support_(device);
+        auto swap_chain_adequate = false;
+        if (extensions_supported) {
+            auto swap_chain_support = query_swap_chain_support_(device);
+            swap_chain_adequate =
+                (not swap_chain_support.formats.empty())
+                and (not swap_chain_support.present_modes.empty());
+        }
+
+        return indices.is_complete() && extensions_supported
+               && swap_chain_adequate;
     }
 
     inline auto pick_physical_device_()
@@ -271,8 +325,10 @@ class vk {
             static_cast<uint32_t>(queue_create_infos.size());
         create_info.pQueueCreateInfos = queue_create_infos.data();
 
-        create_info.pEnabledFeatures      = std::addressof(device_features);
-        create_info.enabledExtensionCount = 0;
+        create_info.pEnabledFeatures = std::addressof(device_features);
+        create_info.enabledExtensionCount =
+            static_cast<uint32_t>(device_extensions.size());
+        create_info.ppEnabledExtensionNames = device_extensions.data();
 
         if (enable_validation_layers) {
             create_info.enabledLayerCount =
