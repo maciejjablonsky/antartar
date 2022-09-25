@@ -2,17 +2,18 @@
 #include <fmt/format.h>
 
 namespace antartar {
-	void app::run()
-	{
-		fmt::print("running antartar\n");
+void app::run()
+{
+    fmt::print("running antartar\n");
 
-		uint32_t extension_count = 0;
-		vkEnumerateInstanceExtensionProperties(nullptr, std::addressof(extension_count), nullptr);
-		log(fmt::format("vulkan supports {} extensions", extension_count));
+    uint32_t extension_count = 0;
+    vkEnumerateInstanceExtensionProperties(nullptr,
+                                           std::addressof(extension_count),
+                                           nullptr);
+    log(fmt::format("vulkan supports {} extensions", extension_count));
 
-		while (!glfwWindowShouldClose(window_))
-		{
-			glfwPollEvents();
-		}
-	}
+    while (!glfwWindowShouldClose(window_)) {
+        glfwPollEvents();
+    }
 }
+} // namespace antartar
