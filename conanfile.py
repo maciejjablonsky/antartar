@@ -1,6 +1,7 @@
 from conan import ConanFile
 from conan.tools.cmake import CMakeToolchain, CMakeDeps, cmake_layout, CMake
-from conan.tools.env import Environment, VirtualRunEnv
+from conan.tools.env import Environment, VirtualRunEnv, VirtualBuildEnv
+
 
 class AntartarConanFile(ConanFile):
     name = "antartar"
@@ -24,8 +25,11 @@ class AntartarConanFile(ConanFile):
         vk_run_envvars = vk_run_env.vars(self, scope="run") # scopes the env variables to run environment
         vk_run_envvars.save_script("vk_run_env") # saves a file
 
-        ms = VirtualRunEnv(self) 
-        ms.generate() # creates a launcher script which sets up dependencies runenv and the above custom run script
+        run_env = VirtualRunEnv(self)
+        run_env.generate() # creates a launcher script which sets up dependencies runenv and the above custom run script
+
+        build_env = VirtualBuildEnv(self)
+        build_env.generate()
 
     def layout(self):
         cmake_layout(self)
