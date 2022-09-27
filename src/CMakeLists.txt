@@ -1,16 +1,17 @@
 add_executable(antartar)
 
-set(ANTARTAR_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
+set(ANTARTAR_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(antartar PRIVATE ${ANTARTAR_INCLUDE_DIR})
 
 
 target_sources(
     antartar
     PRIVATE
-    ${ANTARTAR_INCLUDE_DIR}/antartar/app.hpp
-    ${ANTARTAR_INCLUDE_DIR}/antartar/log.hpp
-    ${ANTARTAR_INCLUDE_DIR}/antartar/vk.hpp
-    ${ANTARTAR_INCLUDE_DIR}/antartar/window.hpp
+    include/antartar/app.hpp
+    include/antartar/file.hpp
+    include/antartar/log.hpp
+    include/antartar/vk.hpp
+    include/antartar/window.hpp
     app.cpp
     main.cpp
     window.cpp

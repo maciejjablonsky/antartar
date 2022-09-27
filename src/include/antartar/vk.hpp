@@ -8,8 +8,10 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <antartar/file.hpp>
 
 namespace antartar::vk {
+
 constexpr std::array validation_layers = {"VK_LAYER_KHRONOS_validation"};
 
 constexpr std::array device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -582,6 +584,8 @@ class vk {
         }
     }
 
+    inline auto create_graphics_pipeline_() {}
+
   public:
     inline vk(auto& window)
     {
@@ -592,10 +596,10 @@ class vk {
         create_logical_device_();
         create_swap_chain_(window);
         create_image_views_();
+        create_graphics_pipeline_();
     }
 
     inline ~vk()
-
     {
         ranges::for_each(swap_chain_image_views_,
                          [this](const VkImageView& image_view) {

@@ -6,11 +6,11 @@ from conan.tools.env import Environment, VirtualRunEnv, VirtualBuildEnv
 class AntartarConanFile(ConanFile):
     name = "antartar"
     settings = "os", "arch", "compiler", "build_type"
-    generators = "CMakeToolchain", "CMakeDeps"  
-    
+    generators = "CMakeToolchain", "CMakeDeps"
+
     def generate(self):
         tc = CMakeToolchain(self)
-    
+
         tc.preprocessor_definitions["ANTARTAR_IS_DEBUG"] = 1 if self.settings.build_type == "Debug" else 0
         tc.preprocessor_definitions["ANTARTAR_IS_RELEASE"] = 1 if self.settings.build_type == "Release" else 0
         tc.generate()
@@ -33,7 +33,7 @@ class AntartarConanFile(ConanFile):
 
     def layout(self):
         cmake_layout(self)
-    
+
     def build_requirements(self):
         self.build_requires("cmake/[>=3.24]")
         self.build_requires("shaderc/2021.1")
@@ -54,4 +54,3 @@ class AntartarConanFile(ConanFile):
             cmake.configure()
         if self.should_build:
             cmake.build()
-   
