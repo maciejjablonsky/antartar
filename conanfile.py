@@ -1,6 +1,7 @@
 from conan import ConanFile
 from conan.tools.cmake import CMakeToolchain, CMakeDeps, cmake_layout, CMake
 from conan.tools.env import Environment, VirtualRunEnv, VirtualBuildEnv
+import os
 
 
 class AntartarConanFile(ConanFile):
@@ -13,6 +14,9 @@ class AntartarConanFile(ConanFile):
 
         tc.preprocessor_definitions["ANTARTAR_IS_DEBUG"] = 1 if self.settings.build_type == "Debug" else 0
         tc.preprocessor_definitions["ANTARTAR_IS_RELEASE"] = 1 if self.settings.build_type == "Release" else 0
+
+        shaders_path =  os.path.normpath(os.path.join(self.source_folder, 'shaders')).replace('\\', '\\\\\\\\')
+        tc.preprocessor_definitions["ANTARTAR_SHADERS_DIRECTORY"] = f'"{shaders_path}"'
         tc.generate()
 
         deps = CMakeDeps(self)
