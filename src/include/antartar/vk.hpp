@@ -594,7 +594,7 @@ class vk {
         VkShaderModule shader_module;
         if (VK_SUCCESS
             != vkCreateShaderModule(device_,
-                                    std::addressof(craete_info),
+                                    std::addressof(create_info),
                                     nullptr,
                                     std::addressof(shader_module))) {
             throw std::runtime_error("failed to create shader module!");
@@ -605,9 +605,9 @@ class vk {
     inline auto create_graphics_pipeline_()
     {
         std::filesystem::path shaders_directory = ANTARTAR_SHADERS_DIRECTORY;
-        auto vert_shader_code = file::read(shaders_directory / "vert.spv");
+        auto vert_shader_code = file::read(shaders_directory / "shader.vert.spv");
         auto vert_shader_module = create_shader_module_(vert_shader_code);
-        auto frag_shader_code = file::read(shaders_directory / "frag.spv");
+        auto frag_shader_code = file::read(shaders_directory / "shader.frag.spv");
         auto frag_shader_module = create_shader_module_(frag_shader_code);
 
         VkPipelineShaderStageCreateInfo vert_shader_stage_info{};

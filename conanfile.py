@@ -15,7 +15,7 @@ class AntartarConanFile(ConanFile):
         tc.preprocessor_definitions["ANTARTAR_IS_DEBUG"] = 1 if self.settings.build_type == "Debug" else 0
         tc.preprocessor_definitions["ANTARTAR_IS_RELEASE"] = 1 if self.settings.build_type == "Release" else 0
 
-        shaders_path =  os.path.normpath(os.path.join(self.source_folder, 'shaders')).replace('\\', '\\\\\\\\')
+        shaders_path =  os.path.normpath(os.path.join(self.build_folder, 'shaders')).replace('\\', '\\\\\\\\')
         tc.preprocessor_definitions["ANTARTAR_SHADERS_DIRECTORY"] = f'"{shaders_path}"'
         tc.generate()
 
@@ -52,9 +52,26 @@ class AntartarConanFile(ConanFile):
             self.requires("vulkan-validationlayers/1.3.216.0")
 
 
+    def _build_shaders(self):
+        # lame but enough way to deal with compilation
+        shaders_directory = os.path.normpath(os.path.join(self.source_folder, 'shaders'))
+        self.output.info(f"Compiling shaders from directory {shaders_directory}")
+        shaders_build_directory = os.path.join(self.build_folder, 'shaders')
+        self.output.info(f"Creating shaders output folder at {shaders_build_directory}")
+        if not os.path.exists(shaders_build_directory):
+            os.makedirs(shaders_build_directory)
+
+        for root, directories, files in os.walk(shaders_directory):
+            for file in [file for file in files if file.endswith('.vert') or file.endswith('.frag')]:
+                shader_path = os.path.normpath(os.path.join(root, file))
+                self.output.info(f"Compiling {shader_path}")
+                output_path = os.path.join(shaders_build_directory, f'{file}.spv')
+                self.run(f"glslc {shader_path} -o {output_path}")
+
     def build(self):
         cmake = CMake(self)
         if self.should_configure:
             cmake.configure()
         if self.should_build:
+            self._build_shaders()
             cmake.build()
