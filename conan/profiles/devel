@@ -1,0 +1,5 @@
+include(default)
+[settings]
+compiler.cppstd=20
+vulkan-validationlayers:build_type=Release
+build_type=Debug
