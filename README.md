@@ -16,7 +16,7 @@ conan config install ./conan
 
 mkdir build && cd build
 
-conan install ..  -pr:h default -pr:b default -s compiler.cppstd=20 -s build_type=Debug --build=missing -s vulkan-validationlayers:build_type=Release
+conan install .. -pr:h devel -pr:b default --build=missing
 
 cmd "/K" '.\generators\conanrun.bat && powershell'
 cmd "/K" '.\generators\conanbuild.bat && powershell'
