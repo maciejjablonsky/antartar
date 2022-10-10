@@ -604,10 +604,11 @@ class vk {
 
     inline auto create_graphics_pipeline_()
     {
-        std::filesystem::path shaders_directory = ANTARTAR_SHADERS_DIRECTORY;
-        auto vert_shader_code = file::read(shaders_directory / "shader.vert.spv");
+        auto vert_shader_code = file::read(
+            file::path::join(ANTARTAR_SHADERS_DIRECTORY, "shader.vert.spv"));
         auto vert_shader_module = create_shader_module_(vert_shader_code);
-        auto frag_shader_code = file::read(shaders_directory / "shader.frag.spv");
+        auto frag_shader_code   = file::read(
+            file::path::join(ANTARTAR_SHADERS_DIRECTORY, "shader.frag.spv"));
         auto frag_shader_module = create_shader_module_(frag_shader_code);
 
         VkPipelineShaderStageCreateInfo vert_shader_stage_info{};
@@ -616,17 +617,16 @@ class vk {
         vert_shader_stage_info.stage  = VK_SHADER_STAGE_VERTEX_BIT;
         vert_shader_stage_info.module = vert_shader_module;
         vert_shader_stage_info.pName  = "main";
-        
+
         VkPipelineShaderStageCreateInfo frag_shader_stage_info{};
         frag_shader_stage_info.sType =
             VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        frag_shader_stage_info.stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
         frag_shader_stage_info.module = frag_shader_module;
         frag_shader_stage_info.pName  = "main";
 
         std::array shader_stages = {vert_shader_stage_info,
                                     frag_shader_stage_info};
-
 
         vkDestroyShaderModule(device_, frag_shader_module, nullptr);
         vkDestroyShaderModule(device_, vert_shader_module, nullptr);
