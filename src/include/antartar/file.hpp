@@ -22,7 +22,7 @@ inline std::pmr::vector<std::byte> read(const std::filesystem::path& path)
 }
 
 namespace path {
-inline auto join(auto... args) { return (std::filesystem::path{args} / ...); }
+constexpr inline auto join(auto... args) { return (std::filesystem::path{args} / ...); }
 } // namespace path
 
 } // namespace antartar::file
