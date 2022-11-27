@@ -51,17 +51,17 @@ class AntartarConanFile(ConanFile):
 
     def build_requirements(self):
         self.build_requires("cmake/[>=3.24]")
-        self.build_requires("shaderc/2021.1")
 
     def requirements(self):
         self.requires("fmt/9.1.0")
         self.requires("glfw/3.3.8")
         self.requires("ms-gsl/4.0.0")
         self.requires("range-v3/0.12.0")
-        self.requires("vulkan-loader/1.3.216.0")
+        self.requires("vulkan-loader/1.3.231.1")
+        self.requires("spirv-tools/1.3.231.1")
         if self.settings.build_type == "Debug":
-            self.requires("vulkan-validationlayers/1.3.216.0")
-
+            self.requires("vulkan-validationlayers/1.3.231.1")
+        self.requires("shaderc/2021.1")
 
     def _build_shaders(self):
         # lame but enough way to deal with compilation
