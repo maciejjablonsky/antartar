@@ -46,6 +46,27 @@ class AntartarConanFile(ConanFile):
         build_env = VirtualBuildEnv(self)
         build_env.generate()
 
+        self._add_cmake_executable_to_cmake_presets()
+
+    def _add_cmake_executable_to_cmake_presets(self):
+        import json
+
+        cmake_path = self.deps_env_info["cmake"].path[0]
+        cmake_presets_path = os.path.join(
+            self.build_folder, "generators", "CMakePresets.json"
+        )
+        assert os.path.exists(cmake_presets_path)
+
+        with open(cmake_presets_path, "r") as cmake_presets_file:
+            cmake_presets_content = json.load(cmake_presets_file)
+            for configuration_preset in cmake_presets_content["configurePresets"]:
+                configuration_preset["cmakeExecutable"] = os.path.join(
+                    cmake_path, "cmake.exe"
+                )
+
+        with open(cmake_presets_path, "w") as cmake_presets_file:
+            cmake_presets_file.write(json.dumps(cmake_presets_content, indent=4))
+
     def layout(self):
         cmake_layout(self)
 
