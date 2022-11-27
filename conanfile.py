@@ -9,6 +9,10 @@ class AntartarConanFile(ConanFile):
     settings = "os", "arch", "compiler", "build_type"
     generators = "CMakeToolchain", "CMakeDeps"
 
+    @property
+    def _is_debug(self):
+        return self.settings.build_type == "Debug"
+
     def generate(self):
         tc = CMakeToolchain(self)
 
@@ -46,26 +50,61 @@ class AntartarConanFile(ConanFile):
         build_env = VirtualBuildEnv(self)
         build_env.generate()
 
-        self._add_cmake_executable_to_cmake_presets()
+        self._update_cmake_presets()
 
-    def _add_cmake_executable_to_cmake_presets(self):
+    def _load_json_from_file(self, path):
         import json
 
+        with open(path, "r") as file:
+            return json.load(file)
+
+    def _save_json_to_file(self, path, content):
+        import json
+
+        with open(path, "w") as file:
+            file.write(json.dumps(content, indent=4))
+
+    def _add_env_variable_to_cmake_presets(self, cmake_presets, name, value):
+        for preset_type in ["configurePresets", "buildPresets"]:
+            for preset in cmake_presets[preset_type]:
+                new_variable = {name: value}
+                if "environment" in preset:
+                    env = preset["environment"]
+                    env = {**env, **new_variable}
+                    preset["environment"] = env
+                else:
+                    preset["environment"] = new_variable
+
+    def _add_cmake_executable_to_cmake_presets(self, cmake_presets_json):
         cmake_path = self.deps_env_info["cmake"].path[0]
-        cmake_presets_path = os.path.join(
-            self.build_folder, "generators", "CMakePresets.json"
-        )
+        for configuration_preset in cmake_presets_json["configurePresets"]:
+            configuration_preset["cmakeExecutable"] = os.path.join(
+                cmake_path, "cmake.exe"
+            )
+
+    def _update_cmake_presets(self):
+        cmake_presets_path = os.path.join(self.source_folder, "CMakeUserPresets.json")
         assert os.path.exists(cmake_presets_path)
+        cmake_presets_content = self._load_json_from_file(cmake_presets_path)
 
-        with open(cmake_presets_path, "r") as cmake_presets_file:
-            cmake_presets_content = json.load(cmake_presets_file)
-            for configuration_preset in cmake_presets_content["configurePresets"]:
-                configuration_preset["cmakeExecutable"] = os.path.join(
-                    cmake_path, "cmake.exe"
-                )
+        self._add_cmake_executable_to_cmake_presets(cmake_presets_content)
 
-        with open(cmake_presets_path, "w") as cmake_presets_file:
-            cmake_presets_file.write(json.dumps(cmake_presets_content, indent=4))
+        if self._is_debug:
+            self._add_env_variable_to_cmake_presets(
+                cmake_presets_content,
+                name="VK_INSTANCE_LAYERS",
+                value="VK_LAYER_LUNARG_api_dump;VK_LAYER_KHRONOS_validation",
+            )
+            validation_layers_path = os.path.normpath(
+                self.deps_cpp_info["vulkan-validationlayers"].bin_paths[0]
+            )
+            self._add_env_variable_to_cmake_presets(
+                cmake_presets_content,
+                name="VK_LAYER_PATH",
+                value=validation_layers_path,
+            )
+
+        self._save_json_to_file(cmake_presets_path, cmake_presets_content)
 
     def layout(self):
         cmake_layout(self)
