@@ -650,6 +650,10 @@ class vk {
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
 
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = swap_chain_extent_;
+
         vkDestroyShaderModule(device_, frag_shader_module, nullptr);
         vkDestroyShaderModule(device_, vert_shader_module, nullptr);
 
