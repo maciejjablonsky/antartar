@@ -150,7 +150,7 @@ class AntartarConanFile(ConanFile):
                 shader_path = os.path.normpath(os.path.join(root, file))
                 self.output.info(f"Compiling {shader_path}")
                 output_path = os.path.join(shaders_build_directory, f"{file}.spv")
-                self.run(f"glslc {shader_path} -o {output_path}")
+                self.run(f"glslc {shader_path} -o {output_path}", run_environment=True)
 
     def build(self):
         cmake = CMake(self)
