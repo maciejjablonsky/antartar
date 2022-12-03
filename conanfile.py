@@ -61,6 +61,19 @@ class AntartarConanFile(ConanFile):
 
         with open(path, "w") as file:
             file.write(json.dumps(content, indent=4))
+
+    def _add_env_variable_to_cmake_presets(self, cmake_presets_path, name, value):
+        cmake_presets = self._load_json_from_file(cmake_presets_path)
+        for preset_type in ["configurePresets", "buildPresets"]:
+            for preset in cmake_presets[preset_type]:
+                new_variable = {name: value}
+                if "environment" in preset:
+                    env = preset["environment"]
+                    env = {**env, **new_variable}
+                    preset["environment"] = env
+                else:
+                    preset["environment"] = new_variable
+        self._save_json_to_file(cmake_presets_path, cmake_presets)
     def layout(self):
         cmake_layout(self)
 
