@@ -64,7 +64,8 @@ class AntartarConanFile(ConanFile):
         with open(path, "w") as file:
             file.write(json.dumps(content, indent=4))
 
-    def _add_env_variable_to_cmake_presets(self, cmake_presets, name, value):
+    def _add_env_variable_to_cmake_presets(self, cmake_presets_path, name, value):
+        cmake_presets = self._load_json_from_file(cmake_presets_path)
         for preset_type in ["configurePresets", "buildPresets"]:
             for preset in cmake_presets[preset_type]:
                 new_variable = {name: value}
@@ -74,24 +75,32 @@ class AntartarConanFile(ConanFile):
                     preset["environment"] = env
                 else:
                     preset["environment"] = new_variable
+        self._save_json_to_file(cmake_presets_path, cmake_presets)
 
-    def _add_cmake_executable_to_cmake_presets(self, cmake_presets_json):
+    def _add_cmake_executable_to_cmake_presets(self, cmake_presets_path):
+        cmake_presets = self._load_json_from_file(cmake_presets_path)
+
         cmake_path = self.deps_env_info["cmake"].path[0]
-        for configuration_preset in cmake_presets_json["configurePresets"]:
+        self.output.info(
+            f'Setting "cmakeExecutable" in {cmake_presets_path} to "{cmake_path}"'
+        )
+        for configuration_preset in cmake_presets["configurePresets"]:
             configuration_preset["cmakeExecutable"] = os.path.join(
                 cmake_path, "cmake.exe"
             )
+        self._save_json_to_file(cmake_presets_path, cmake_presets)
 
     def _update_cmake_presets(self):
-        cmake_presets_path = os.path.join(self.source_folder, "CMakeUserPresets.json")
+        cmake_presets_path = os.path.join(
+            self.build_folder, "generators", "CMakePresets.json"
+        )
         assert os.path.exists(cmake_presets_path)
-        cmake_presets_content = self._load_json_from_file(cmake_presets_path)
 
-        self._add_cmake_executable_to_cmake_presets(cmake_presets_content)
+        self._add_cmake_executable_to_cmake_presets(cmake_presets_path)
 
         if self._is_debug:
             self._add_env_variable_to_cmake_presets(
-                cmake_presets_content,
+                cmake_presets_path,
                 name="VK_INSTANCE_LAYERS",
                 value="VK_LAYER_LUNARG_api_dump;VK_LAYER_KHRONOS_validation",
             )
@@ -99,12 +108,10 @@ class AntartarConanFile(ConanFile):
                 self.deps_cpp_info["vulkan-validationlayers"].bin_paths[0]
             )
             self._add_env_variable_to_cmake_presets(
-                cmake_presets_content,
+                cmake_presets_path,
                 name="VK_LAYER_PATH",
                 value=validation_layers_path,
             )
-
-        self._save_json_to_file(cmake_presets_path, cmake_presets_content)
 
     def layout(self):
         cmake_layout(self)
@@ -143,7 +150,7 @@ class AntartarConanFile(ConanFile):
                 shader_path = os.path.normpath(os.path.join(root, file))
                 self.output.info(f"Compiling {shader_path}")
                 output_path = os.path.join(shaders_build_directory, f"{file}.spv")
-                self.run(f"glslc {shader_path} -o {output_path}")
+                self.run(f"glslc {shader_path} -o {output_path}", run_environment=True)
 
     def build(self):
         cmake = CMake(self)
