@@ -50,8 +50,6 @@ class AntartarConanFile(ConanFile):
         build_env = VirtualBuildEnv(self)
         build_env.generate()
 
-        self._update_cmake_presets()
-
     def _load_json_from_file(self, path):
         import json
 
@@ -63,49 +61,6 @@ class AntartarConanFile(ConanFile):
 
         with open(path, "w") as file:
             file.write(json.dumps(content, indent=4))
-
-    def _add_env_variable_to_cmake_presets(self, cmake_presets, name, value):
-        for preset_type in ["configurePresets", "buildPresets"]:
-            for preset in cmake_presets[preset_type]:
-                new_variable = {name: value}
-                if "environment" in preset:
-                    env = preset["environment"]
-                    env = {**env, **new_variable}
-                    preset["environment"] = env
-                else:
-                    preset["environment"] = new_variable
-
-    def _add_cmake_executable_to_cmake_presets(self, cmake_presets_json):
-        cmake_path = self.deps_env_info["cmake"].path[0]
-        for configuration_preset in cmake_presets_json["configurePresets"]:
-            configuration_preset["cmakeExecutable"] = os.path.join(
-                cmake_path, "cmake.exe"
-            )
-
-    def _update_cmake_presets(self):
-        cmake_presets_path = os.path.join(self.source_folder, "CMakeUserPresets.json")
-        assert os.path.exists(cmake_presets_path)
-        cmake_presets_content = self._load_json_from_file(cmake_presets_path)
-
-        self._add_cmake_executable_to_cmake_presets(cmake_presets_content)
-
-        if self._is_debug:
-            self._add_env_variable_to_cmake_presets(
-                cmake_presets_content,
-                name="VK_INSTANCE_LAYERS",
-                value="VK_LAYER_LUNARG_api_dump;VK_LAYER_KHRONOS_validation",
-            )
-            validation_layers_path = os.path.normpath(
-                self.deps_cpp_info["vulkan-validationlayers"].bin_paths[0]
-            )
-            self._add_env_variable_to_cmake_presets(
-                cmake_presets_content,
-                name="VK_LAYER_PATH",
-                value=validation_layers_path,
-            )
-
-        self._save_json_to_file(cmake_presets_path, cmake_presets_content)
-
     def layout(self):
         cmake_layout(self)
 
