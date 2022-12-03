@@ -628,6 +628,14 @@ class vk {
         std::array shader_stages = {vert_shader_stage_info,
                                     frag_shader_stage_info};
 
+        VkPipelineVertexInputStateCreateInfo vertex_input_info{};
+        vertex_input_info.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertex_input_info.vertexBindingDescriptionCount   = 0;
+        vertex_input_info.pVertexBindingDescriptions      = nullptr;
+        vertex_input_info.vertexAttributeDescriptionCount = 0;
+        vertex_input_info.pVertexAttributeDescriptions    = nullptr;
+
         vkDestroyShaderModule(device_, frag_shader_module, nullptr);
         vkDestroyShaderModule(device_, vert_shader_module, nullptr);
 
