@@ -665,6 +665,12 @@ class vk {
         dynamic_state.dynamicStateCount =
             static_cast<uint32_t>(dynamic_states.size());
         dynamic_state.pDynamicStates = dynamic_states.data();
+
+        VkPipelineViewportStateCreateInfo viewport_state{};
+        viewport_state.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewport_state.viewportCount = 1;
+        viewport_state.scissorCount  = 1;
     }
 
   public:
