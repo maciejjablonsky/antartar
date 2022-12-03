@@ -636,6 +636,12 @@ class vk {
         vertex_input_info.vertexAttributeDescriptionCount = 0;
         vertex_input_info.pVertexAttributeDescriptions    = nullptr;
 
+        VkPipelineInputAssemblyStateCreateInfo input_assembly{};
+        input_assembly.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        input_assembly.primitiveRestartEnable = VK_FALSE;
+
         vkDestroyShaderModule(device_, frag_shader_module, nullptr);
         vkDestroyShaderModule(device_, vert_shader_module, nullptr);
 
