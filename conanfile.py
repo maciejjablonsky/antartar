@@ -50,6 +50,8 @@ class AntartarConanFile(ConanFile):
         build_env = VirtualBuildEnv(self)
         build_env.generate()
 
+        self._update_cmake_presets()
+
     def _load_json_from_file(self, path):
         import json
 
@@ -87,6 +89,30 @@ class AntartarConanFile(ConanFile):
                 cmake_path, "cmake.exe"
             )
         self._save_json_to_file(cmake_presets_path, cmake_presets)
+
+    def _update_cmake_presets(self):
+        cmake_presets_path = os.path.join(
+            self.build_folder, "generators", "CMakePresets.json"
+        )
+        assert os.path.exists(cmake_presets_path)
+
+        self._add_cmake_executable_to_cmake_presets(cmake_presets_path)
+
+        if self._is_debug:
+            self._add_env_variable_to_cmake_presets(
+                cmake_presets_path,
+                name="VK_INSTANCE_LAYERS",
+                value="VK_LAYER_LUNARG_api_dump;VK_LAYER_KHRONOS_validation",
+            )
+            validation_layers_path = os.path.normpath(
+                self.deps_cpp_info["vulkan-validationlayers"].bin_paths[0]
+            )
+            self._add_env_variable_to_cmake_presets(
+                cmake_presets_path,
+                name="VK_LAYER_PATH",
+                value=validation_layers_path,
+            )
+
     def layout(self):
         cmake_layout(self)
 
