@@ -74,6 +74,19 @@ class AntartarConanFile(ConanFile):
                 else:
                     preset["environment"] = new_variable
         self._save_json_to_file(cmake_presets_path, cmake_presets)
+
+    def _add_cmake_executable_to_cmake_presets(self, cmake_presets_path):
+        cmake_presets = self._load_json_from_file(cmake_presets_path)
+
+        cmake_path = self.deps_env_info["cmake"].path[0]
+        self.output.info(
+            f'Setting "cmakeExecutable" in {cmake_presets_path} to "{cmake_path}"'
+        )
+        for configuration_preset in cmake_presets["configurePresets"]:
+            configuration_preset["cmakeExecutable"] = os.path.join(
+                cmake_path, "cmake.exe"
+            )
+        self._save_json_to_file(cmake_presets_path, cmake_presets)
     def layout(self):
         cmake_layout(self)
 
