@@ -43,7 +43,7 @@ static inline VkResult CreateDebugUtilsMessengerEXT(
     constexpr auto func_name = "vkCreateDebugUtilsMessengerEXT"sv;
     auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
         vkGetInstanceProcAddr(instance, func_name.data()));
-    if (nullptr != func) {
+    if (not equals(nullptr, func)) {
         return func(instance, create_info, allocator, debug_messenger);
     }
     else {
@@ -59,7 +59,7 @@ DestroyDebugUtilsMessengerEXT(VkInstance instance,
     constexpr auto func_name = "vkDestroyDebugUtilsMessengerEXT"sv;
     auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
         vkGetInstanceProcAddr(instance, func_name.data()));
-    if (nullptr != func) {
+    if (equals(nullptr, func)) {
         func(instance, debug_messenger, allocator);
     }
 }
@@ -236,7 +236,7 @@ class vk {
                                              surface_,
                                              std::addressof(format_count),
                                              nullptr);
-        if (format_count not_eq 0) {
+        if (not equals(format_count, 0)) {
             details.formats.resize(format_count);
             vkGetPhysicalDeviceSurfaceFormatsKHR(device,
                                                  surface_,
@@ -250,7 +250,7 @@ class vk {
             surface_,
             std::addressof(present_mode_count),
             nullptr);
-        if (present_mode_count not_eq 0) {
+        if (not equals(present_mode_count, 0)) {
             details.present_modes.resize(present_mode_count);
             vkGetPhysicalDeviceSurfacePresentModesKHR(
                 device,
@@ -284,7 +284,7 @@ class vk {
         vkEnumeratePhysicalDevices(instance_,
                                    std::addressof(device_count),
                                    nullptr);
-        if (0 == device_count) {
+        if (equals(0, device_count)) {
             throw std::runtime_error(
                 log_message("failed to find GPUs with Vulkan support!"));
         }
