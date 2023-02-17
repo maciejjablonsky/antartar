@@ -11,6 +11,12 @@
 #include <vector>
 
 namespace antartar::vk {
+auto equals(auto lhs, auto rhs) -> bool
+    requires std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
+                                  std::remove_cvref_t<decltype(rhs)>>
+{
+    return lhs == rhs;
+}
 
 constexpr std::array validation_layers = {"VK_LAYER_KHRONOS_validation"};
 
