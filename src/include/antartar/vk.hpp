@@ -13,7 +13,7 @@
 namespace antartar::vk {
 auto equals(auto lhs, auto rhs) -> bool
     requires std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
-                                  std::remove_cvref_t<decltype(rhs)>>
+                                           std::remove_cvref_t<decltype(rhs)>>
 {
     return lhs == rhs;
 }
@@ -594,8 +594,8 @@ class vk {
     {
         VkShaderModuleCreateInfo create_info{};
         create_info.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        create_info.codeSize = code.size();
-        create_info.pCode    = reinterpret_cast<const uint32_t*>(code.data());
+        create_info.codeSize = code->size();
+        create_info.pCode    = reinterpret_cast<const uint32_t*>(code->data());
 
         VkShaderModule shader_module;
         if (VK_SUCCESS
