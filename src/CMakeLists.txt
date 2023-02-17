@@ -31,3 +31,6 @@ target_link_libraries(antartar PRIVATE Microsoft.GSL::GSL)
 
 find_package(range-v3 REQUIRED CONFIG)
 target_link_libraries(antartar PRIVATE range-v3::range-v3)
+
+find_package(tl-expected REQUIRED CONFIG)
+target_link_libraries(antartar PRIVATE tl::expected)
