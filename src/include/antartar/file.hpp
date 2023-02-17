@@ -3,16 +3,19 @@
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
+#include <tl/expected.hpp>
 #include <utility>
 #include <vector>
 
 namespace antartar::file {
-inline std::pmr::vector<std::byte> read(const std::filesystem::path& path)
+enum [[nodiscard]] status{ok, failed_to_open};
+
+inline auto read(const std::filesystem::path& path)
+    -> tl::expected<std::pmr::vector<std::byte>, status>
 {
     std::ifstream file(path, std::ios::ate | std::ios::binary);
     if (!file.is_open()) {
-        throw std::runtime_error(log_message(
-            fmt::format("failed to open file: {}!", path.string())));
+        return tl::make_unexpected(status::failed_to_open);
     }
     const auto file_size = static_cast<size_t>(file.tellg());
     std::pmr::vector<std::byte> buffer(file_size);
@@ -22,7 +25,10 @@ inline std::pmr::vector<std::byte> read(const std::filesystem::path& path)
 }
 
 namespace path {
-constexpr inline auto join(auto... args) { return (std::filesystem::path{args} / ...); }
+constexpr inline auto join(auto... args)
+{
+    return (std::filesystem::path{args} / ...);
+}
 } // namespace path
 
 } // namespace antartar::file
