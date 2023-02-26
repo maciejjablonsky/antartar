@@ -663,15 +663,6 @@ class vk {
         vkDestroyShaderModule(device_, frag_shader_module, nullptr);
         vkDestroyShaderModule(device_, vert_shader_module, nullptr);
 
-        std::array dynamic_states = {VK_DYNAMIC_STATE_VIEWPORT,
-                                     VK_DYNAMIC_STATE_SCISSOR};
-        VkPipelineDynamicStateCreateInfo dynamic_state{};
-        dynamic_state.sType =
-            VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamic_state.dynamicStateCount =
-            static_cast<uint32_t>(dynamic_states.size());
-        dynamic_state.pDynamicStates = dynamic_states.data();
-
         VkPipelineViewportStateCreateInfo viewport_state{};
         viewport_state.sType =
             VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -722,6 +713,16 @@ class vk {
         color_blending.attachmentCount = 1;
         color_blending.pAttachments    = std::addressof(color_blend_attachment);
         ranges::fill(color_blending.blendConstants, 0.f);
+
+        std::array dynamic_states = {VK_DYNAMIC_STATE_VIEWPORT,
+                                     VK_DYNAMIC_STATE_SCISSOR,
+                                     VK_DYNAMIC_STATE_LINE_WIDTH};
+        VkPipelineDynamicStateCreateInfo dynamic_state{};
+        dynamic_state.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamic_state.dynamicStateCount =
+            static_cast<uint32_t>(dynamic_states.size());
+        dynamic_state.pDynamicStates = dynamic_states.data();
     }
 
   public:
