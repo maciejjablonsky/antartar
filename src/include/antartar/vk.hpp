@@ -94,6 +94,7 @@ class vk {
     VkFormat swap_chain_image_format_ = VkFormat::VK_FORMAT_UNDEFINED;
     VkExtent2D swap_chain_extent_{};
     std::pmr::vector<VkImageView> swap_chain_image_views_{};
+    VkPipelineLayout pipeline_layout_;
 
     inline bool check_validation_layer_support_()
     {
@@ -723,6 +724,23 @@ class vk {
         dynamic_state.dynamicStateCount =
             static_cast<uint32_t>(dynamic_states.size());
         dynamic_state.pDynamicStates = dynamic_states.data();
+
+        VkPipelineLayoutCreateInfo pipeline_layout_info{};
+        pipeline_layout_info.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipeline_layout_info.setLayoutCount         = 0;
+        pipeline_layout_info.pSetLayouts            = nullptr;
+        pipeline_layout_info.pushConstantRangeCount = 0;
+        pipeline_layout_info.pPushConstantRanges    = nullptr;
+
+        if (not equals(
+            VK_SUCCESS,
+            vkCreatePipelineLayout(device_,
+                std::addressof(pipeline_layout_info),
+                nullptr,
+                std::addressof(pipeline_layout_)))) {
+            throw std::runtime_error("failed to create pipeline layout!");
+        }
     }
 
   public:
@@ -740,6 +758,7 @@ class vk {
 
     inline ~vk()
     {
+        vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);    
         ranges::for_each(swap_chain_image_views_,
                          [this](const VkImageView& image_view) {
                              vkDestroyImageView(device_, image_view, nullptr);
