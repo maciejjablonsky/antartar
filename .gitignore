@@ -6,3 +6,4 @@ CMakeUserPresets.json
 *.spv
 CMakeUserPresets.json
 .vscode/*
+Vulkan Tutorial en.pdf
