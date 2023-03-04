@@ -96,6 +96,7 @@ class vk {
     std::pmr::vector<VkImageView> swap_chain_image_views_{};
     VkRenderPass render_pass_;
     VkPipelineLayout pipeline_layout_;
+    VkPipeline graphics_pipeline_;
 
     inline bool check_validation_layer_support_()
     {
@@ -727,6 +728,35 @@ class vk {
                 std::addressof(pipeline_layout_)))) {
             throw std::runtime_error("failed to create pipeline layout!");
         }
+
+        VkGraphicsPipelineCreateInfo pipeline_info{};
+        pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipeline_info.stageCount          = 2;
+        pipeline_info.pStages             = shader_stages.data();
+        pipeline_info.pVertexInputState   = std::addressof(vertex_input_info);
+        pipeline_info.pInputAssemblyState = std::addressof(input_assembly);
+        pipeline_info.pViewportState      = std::addressof(viewport_state);
+        pipeline_info.pRasterizationState = std::addressof(rasterizer);
+        pipeline_info.pMultisampleState   = std::addressof(multisampling);
+        pipeline_info.pDepthStencilState  = nullptr;
+        pipeline_info.pColorBlendState    = std::addressof(color_blending);
+        pipeline_info.pDynamicState       = std::addressof(dynamic_state);
+        pipeline_info.layout              = pipeline_layout_;
+        pipeline_info.renderPass          = render_pass_;
+        pipeline_info.subpass             = 0;
+        pipeline_info.basePipelineHandle  = VK_NULL_HANDLE;
+        pipeline_info.basePipelineIndex   = -1;
+
+        if (not equals(VK_SUCCESS,
+                       vkCreateGraphicsPipelines(
+                           device_,
+                           VK_NULL_HANDLE,
+                           1,
+                           std::addressof(pipeline_info),
+                           nullptr,
+                           std::addressof(graphics_pipeline_)))) {
+            throw std::runtime_error("failed to create graphics pipeline!");
+        }
     }
 
     auto create_render_pass_()
@@ -782,6 +812,7 @@ class vk {
 
     inline ~vk()
     {
+        vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
         vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);    
         vkDestroyRenderPass(device_, render_pass_, nullptr);
         ranges::for_each(swap_chain_image_views_,
