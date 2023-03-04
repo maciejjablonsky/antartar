@@ -757,6 +757,9 @@ class vk {
                            std::addressof(graphics_pipeline_)))) {
             throw std::runtime_error("failed to create graphics pipeline!");
         }
+
+        vkDestroyShaderModule(device_, frag_shader_module, nullptr);
+        vkDestroyShaderModule(device_, vert_shader_module, nullptr);
     }
 
     auto create_render_pass_()
