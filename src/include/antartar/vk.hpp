@@ -98,6 +98,7 @@ class vk {
     VkPipelineLayout pipeline_layout_;
     VkPipeline graphics_pipeline_;
     std::pmr::vector<VkFramebuffer> swap_chain_framebuffers_{};
+    VkCommandPool command_pool_;
 
     inline bool check_validation_layer_support_()
     {
@@ -826,6 +827,22 @@ class vk {
         }
     }
 
+    auto create_command_pool_() -> void {
+        queue_family_indices queue_family_indices =
+            find_queue_families_(physical_device_);
+        VkCommandPoolCreateInfo pool_info{};
+        pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pool_info.queueFamilyIndex =
+            queue_family_indices.graphics_family.value();
+        if (not equals(VK_SUCCESS, vkCreateCommandPool(device_,
+            std::addressof(pool_info),
+            nullptr,
+            std::addressof(command_pool_)))) {
+            throw std::runtime_error("failed to create command pool!");
+        }
+    }
+
   public:
     inline vk(auto& window)
     {
@@ -839,10 +856,12 @@ class vk {
         create_render_pass_();
         create_graphics_pipeline_();
         create_framebuffers_();
+        create_command_pool_();
     }
 
     inline ~vk()
     {
+        vkDestroyCommandPool(device_, command_pool_, nullptr);
         ranges::for_each(
             swap_chain_framebuffers_,
             [this](VkFramebuffer framebuffer) {
