@@ -97,6 +97,7 @@ class vk {
     VkRenderPass render_pass_;
     VkPipelineLayout pipeline_layout_;
     VkPipeline graphics_pipeline_;
+    std::pmr::vector<VkFramebuffer> swap_chain_framebuffers_{};
 
     inline bool check_validation_layer_support_()
     {
@@ -721,11 +722,11 @@ class vk {
         pipeline_layout_info.pPushConstantRanges    = nullptr;
 
         if (not equals(
-            VK_SUCCESS,
-            vkCreatePipelineLayout(device_,
-                std::addressof(pipeline_layout_info),
-                nullptr,
-                std::addressof(pipeline_layout_)))) {
+                VK_SUCCESS,
+                vkCreatePipelineLayout(device_,
+                                       std::addressof(pipeline_layout_info),
+                                       nullptr,
+                                       std::addressof(pipeline_layout_)))) {
             throw std::runtime_error("failed to create pipeline layout!");
         }
 
@@ -799,6 +800,32 @@ class vk {
         }
     }
 
+    auto create_framebuffers_()
+    {
+        swap_chain_framebuffers_.resize(swap_chain_image_views_.size());
+        for (auto [i, swap_chain_image_view] :
+             ranges::views::enumerate(swap_chain_image_views_)) {
+            std::array attachments = {swap_chain_image_view};
+            VkFramebufferCreateInfo framebuffer_info{};
+            framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebuffer_info.renderPass      = render_pass_;
+            framebuffer_info.attachmentCount = 1;
+            framebuffer_info.pAttachments    = attachments.data();
+            framebuffer_info.width           = swap_chain_extent_.width;
+            framebuffer_info.height          = swap_chain_extent_.height;
+            framebuffer_info.layers          = 1;
+
+            if (not equals(VK_SUCCESS,
+                           vkCreateFramebuffer(
+                               device_,
+                               std::addressof(framebuffer_info),
+                               nullptr,
+                               std::addressof(swap_chain_framebuffers_[i])))) {
+                throw std::runtime_error("failed to create framebuffer!");
+            }
+        }
+    }
+
   public:
     inline vk(auto& window)
     {
@@ -811,12 +838,18 @@ class vk {
         create_image_views_();
         create_render_pass_();
         create_graphics_pipeline_();
+        create_framebuffers_();
     }
 
     inline ~vk()
     {
+        ranges::for_each(
+            swap_chain_framebuffers_,
+            [this](VkFramebuffer framebuffer) {
+                vkDestroyFramebuffer(device_, framebuffer, nullptr);
+            });
         vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
-        vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);    
+        vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
         vkDestroyRenderPass(device_, render_pass_, nullptr);
         ranges::for_each(swap_chain_image_views_,
                          [this](const VkImageView& image_view) {
