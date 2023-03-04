@@ -59,7 +59,7 @@ DestroyDebugUtilsMessengerEXT(VkInstance instance,
     constexpr auto func_name = "vkDestroyDebugUtilsMessengerEXT"sv;
     auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
         vkGetInstanceProcAddr(instance, func_name.data()));
-    if (equals(nullptr, func)) {
+    if (not equals(nullptr, func)) {
         func(instance, debug_messenger, allocator);
     }
 }
