@@ -983,6 +983,29 @@ class vk {
                               image_available_samphore_,
                               VK_NULL_HANDLE,
                               std::addressof(image_index));
+        vkResetCommandBuffer(command_buffer_, 0);
+        record_command_buffer_(command_buffer_, image_index);
+
+        std::array wait_semaphores = {image_available_samphore_};
+        std::array<VkPipelineStageFlags, 1> wait_stages = {
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        std::array signal_semaphores = {render_finished_semaphore_};
+        VkSubmitInfo submit_info{
+            .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .waitSemaphoreCount   = wait_semaphores.size(),
+            .pWaitSemaphores      = wait_semaphores.data(),
+            .pWaitDstStageMask    = wait_stages.data(),
+            .commandBufferCount   = 1,
+            .pCommandBuffers      = std::addressof(command_buffer_),
+            .signalSemaphoreCount = signal_semaphores.size(),
+            .pSignalSemaphores    = signal_semaphores.data()};
+        if (not equals(VK_SUCCESS,
+                       vkQueueSubmit(graphics_queue_,
+                                     1,
+                                     std::addressof(submit_info),
+                                     in_flight_fence_))) {
+            throw std::runtime_error("failed to submit draw command buffer!");
+        }
     }
 
     inline ~vk()
