@@ -1017,6 +1017,18 @@ class vk {
                                      in_flight_fence_))) {
             throw std::runtime_error("failed to submit draw command buffer!");
         }
+
+        std::array swap_chains{swap_chain_};
+
+        VkPresentInfoKHR present_info{
+            .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+            .waitSemaphoreCount = signal_semaphores.size(),
+            .pWaitSemaphores    = signal_semaphores.data(),
+            .swapchainCount     = swap_chains.size(),
+            .pSwapchains        = swap_chains.data(),
+            .pImageIndices      = std::addressof(image_index),
+            .pResults           = nullptr};
+        vkQueuePresentKHR(present_queue_, std::addressof(present_info));
     }
 
     inline ~vk()
