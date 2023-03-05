@@ -11,9 +11,9 @@
 #include <vector>
 
 namespace antartar::vk {
-auto equals(auto lhs, auto rhs) -> bool
-    requires std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
-                                           std::remove_cvref_t<decltype(rhs)>>
+auto equals(auto lhs, auto rhs) -> bool requires
+    std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
+                                  std::remove_cvref_t<decltype(rhs)>>
 {
     return lhs == rhs;
 }
@@ -789,12 +789,23 @@ class vk {
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments    = std::addressof(color_attachment_ref);
 
+        VkSubpassDependency dependency{
+            .srcSubpass    = VK_SUBPASS_EXTERNAL,
+            .dstSubpass    = 0,
+            .srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .srcAccessMask = 0,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        };
+
         VkRenderPassCreateInfo render_pass_info{};
         render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         render_pass_info.attachmentCount = 1;
         render_pass_info.pAttachments    = std::addressof(color_attachment);
         render_pass_info.subpassCount    = 1;
         render_pass_info.pSubpasses      = std::addressof(subpass);
+        render_pass_info.dependencyCount = 1;
+        render_pass_info.pDependencies   = std::addressof(dependency);
 
         if (not equals(VK_SUCCESS,
                        vkCreateRenderPass(device_,
