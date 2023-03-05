@@ -99,6 +99,7 @@ class vk {
     VkPipeline graphics_pipeline_;
     std::pmr::vector<VkFramebuffer> swap_chain_framebuffers_{};
     VkCommandPool command_pool_;
+    VkCommandBuffer command_buffer_;
 
     inline bool check_validation_layer_support_()
     {
@@ -827,7 +828,8 @@ class vk {
         }
     }
 
-    auto create_command_pool_() -> void {
+    auto create_command_pool_() -> void
+    {
         queue_family_indices queue_family_indices =
             find_queue_families_(physical_device_);
         VkCommandPoolCreateInfo pool_info{};
@@ -835,11 +837,28 @@ class vk {
         pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         pool_info.queueFamilyIndex =
             queue_family_indices.graphics_family.value();
-        if (not equals(VK_SUCCESS, vkCreateCommandPool(device_,
-            std::addressof(pool_info),
-            nullptr,
-            std::addressof(command_pool_)))) {
+        if (not equals(VK_SUCCESS,
+                       vkCreateCommandPool(device_,
+                                           std::addressof(pool_info),
+                                           nullptr,
+                                           std::addressof(command_pool_)))) {
             throw std::runtime_error("failed to create command pool!");
+        }
+    }
+
+    auto create_command_buffer_()
+    {
+        VkCommandBufferAllocateInfo alloc_info{};
+        alloc_info.sType       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        alloc_info.commandPool = command_pool_;
+        alloc_info.level       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        alloc_info.commandBufferCount = 1;
+        if (not equals(
+                VK_SUCCESS,
+                vkAllocateCommandBuffers(device_,
+                                         std::addressof(alloc_info),
+                                         std::addressof(command_buffer_)))) {
+            throw std::runtime_error("failed to allocate command buffers!");
         }
     }
 
@@ -857,6 +876,7 @@ class vk {
         create_graphics_pipeline_();
         create_framebuffers_();
         create_command_pool_();
+        create_command_buffer_();
     }
 
     inline ~vk()
