@@ -24,6 +24,8 @@ constexpr std::array device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 constexpr bool enable_validation_layers = ANTARTAR_IS_DEBUG;
 
+constexpr int max_frames_in_flight = 2;
+
 static inline VKAPI_ATTR VkBool32 VKAPI_CALL
 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
                VkDebugUtilsMessageTypeFlagsEXT message_type,
@@ -99,7 +101,7 @@ class vk {
     VkPipeline graphics_pipeline_;
     std::pmr::vector<VkFramebuffer> swap_chain_framebuffers_{};
     VkCommandPool command_pool_;
-    VkCommandBuffer command_buffer_;
+    std::pmr::vector<VkCommandBuffer> command_buffers_;
     VkSemaphore image_available_samphore_;
     VkSemaphore render_finished_semaphore_;
     VkFence in_flight_fence_;
@@ -860,18 +862,19 @@ class vk {
         }
     }
 
-    auto create_command_buffer_()
+    auto create_command_buffers_()
     {
-        VkCommandBufferAllocateInfo alloc_info{};
-        alloc_info.sType       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        alloc_info.commandPool = command_pool_;
-        alloc_info.level       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        alloc_info.commandBufferCount = 1;
-        if (not equals(
-                VK_SUCCESS,
+        command_buffers_.resize(max_frames_in_flight);
+        VkCommandBufferAllocateInfo alloc_info{
+            .sType       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = command_pool_,
+            .level       = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = command_buffers_.size()};
+
+        if (not equals(VK_SUCCESS,
                 vkAllocateCommandBuffers(device_,
                                          std::addressof(alloc_info),
-                                         std::addressof(command_buffer_)))) {
+                                                command_buffers_.data()))) {
             throw std::runtime_error("failed to allocate command buffers!");
         }
     }
@@ -974,7 +977,7 @@ class vk {
         create_graphics_pipeline_();
         create_framebuffers_();
         create_command_pool_();
-        create_command_buffer_();
+        create_command_buffers_();
         create_sync_objects_();
     }
 
