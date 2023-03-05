@@ -862,6 +862,44 @@ class vk {
         }
     }
 
+    auto record_command_buffer_(VkCommandBuffer command_buffer,
+                               uint32_t image_index)
+    {
+        VkCommandBufferBeginInfo begin_info{
+            .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags            = 0,
+            .pInheritanceInfo = nullptr};
+        if (not equals(VK_SUCCESS,
+                       vkBeginCommandBuffer(command_buffer,
+                                            std::addressof(begin_info)))) {
+            throw std::runtime_error(
+                "failed to begin recording command buffer!");
+        }
+
+        VkClearValue clear_color = {{{0.f, 0.f, 0.f, 1.f}}};
+
+        VkRenderPassBeginInfo render_pass_info{
+            .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .renderPass      = render_pass_,
+            .framebuffer     = swap_chain_framebuffers_.at(image_index),
+            .renderArea      = {.offset = {0, 0}, .extent = swap_chain_extent_},
+            .clearValueCount = 1,
+            .pClearValues    = std::addressof(clear_color),
+        };
+
+        vkCmdBeginRenderPass(command_buffer,
+                             std::addressof(render_pass_info),
+                             VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(command_buffer,
+                          VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          graphics_pipeline_);
+        vkCmdDraw(command_buffer, 3, 1, 0, 0);
+        vkCmdEndRenderPass(command_buffer);
+        if (not equals(VK_SUCCESS, vkEndCommandBuffer(command_buffer))) {
+            throw std::runtime_error("failed to record command buffer!");
+        }
+    }
+
   public:
     inline vk(auto& window)
     {
