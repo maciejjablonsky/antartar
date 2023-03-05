@@ -896,6 +896,22 @@ class vk {
         vkCmdBindPipeline(command_buffer,
                           VK_PIPELINE_BIND_POINT_GRAPHICS,
                           graphics_pipeline_);
+
+        VkViewport viewport{
+            .x        = 0.f,
+            .y        = 0.f,
+            .width    = static_cast<float>(swap_chain_extent_.width),
+            .height   = static_cast<float>(swap_chain_extent_.height),
+            .minDepth = 0.f,
+            .maxDepth = 1.f};
+        vkCmdSetViewport(command_buffer, 0, 1, std::addressof(viewport));
+
+        VkRect2D scissor{
+            .offset = {0, 0},
+            .extent = swap_chain_extent_
+        };
+        vkCmdSetScissor(command_buffer_, 0, 1, std::addressof(scissor));
+
         vkCmdDraw(command_buffer, 3, 1, 0, 0);
         vkCmdEndRenderPass(command_buffer);
         if (not equals(VK_SUCCESS, vkEndCommandBuffer(command_buffer))) {
