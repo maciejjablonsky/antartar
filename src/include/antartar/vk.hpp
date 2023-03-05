@@ -959,6 +959,14 @@ class vk {
                         VK_TRUE,
                         UINT64_MAX);
         vkResetFences(device_, 1, std::addressof(in_flight_fence_));
+
+        uint32_t image_index{};
+        vkAcquireNextImageKHR(device_,
+                              swap_chain_,
+                              UINT64_MAX,
+                              image_available_samphore_,
+                              VK_NULL_HANDLE,
+                              std::addressof(image_index));
     }
 
     inline ~vk()
