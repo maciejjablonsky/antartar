@@ -11,9 +11,9 @@
 #include <vector>
 
 namespace antartar::vk {
-auto equals(auto lhs, auto rhs) -> bool requires
-    std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
-                                  std::remove_cvref_t<decltype(rhs)>>
+auto equals(auto lhs, auto rhs) -> bool
+    requires std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
+                                           std::remove_cvref_t<decltype(rhs)>>
 {
     return lhs == rhs;
 }
@@ -1030,6 +1030,8 @@ class vk {
             .pResults           = nullptr};
         vkQueuePresentKHR(present_queue_, std::addressof(present_info));
     }
+
+    auto wait_idle() { vkDeviceWaitIdle(device_); }
 
     inline ~vk()
     {

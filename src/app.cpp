@@ -16,6 +16,7 @@ void app::run()
         glfwPollEvents();
         draw_frame_();
     }
+    window_.wait_idle();
 }
 
 void app::draw_frame_() { window_.draw_frame(); }
