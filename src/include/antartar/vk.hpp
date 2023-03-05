@@ -917,6 +917,10 @@ class vk {
         create_command_buffer_();
     }
 
+    auto draw_frame()
+    {
+    }
+
     inline ~vk()
     {
         vkDestroyCommandPool(device_, command_pool_, nullptr);

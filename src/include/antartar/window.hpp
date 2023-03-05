@@ -59,6 +59,8 @@ class window {
     {
     }
 
+    auto draw_frame() { vulkan_.draw_frame(); }
+
     operator GLFWwindow*() { return glfw_window_; }
 };
 } // namespace antartar

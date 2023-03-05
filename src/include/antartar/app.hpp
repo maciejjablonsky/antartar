@@ -10,6 +10,7 @@ class app {
 
   private:
     window window_{WINDOW_WIDTH, WINDOW_HEIGHT, "antartar"};
+    void draw_frame_();
 
   public:
     void run();

@@ -14,6 +14,9 @@ void app::run()
 
     while (!glfwWindowShouldClose(window_)) {
         glfwPollEvents();
+        draw_frame_();
     }
 }
+
+void app::draw_frame_() { window_.draw_frame(); }
 } // namespace antartar
