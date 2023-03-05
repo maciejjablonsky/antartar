@@ -100,6 +100,9 @@ class vk {
     std::pmr::vector<VkFramebuffer> swap_chain_framebuffers_{};
     VkCommandPool command_pool_;
     VkCommandBuffer command_buffer_;
+    VkSemaphore image_available_samphore_;
+    VkSemaphore render_finished_semaphore_;
+    VkFence in_flight_fence_;
 
     inline bool check_validation_layer_support_()
     {
@@ -863,7 +866,7 @@ class vk {
     }
 
     auto record_command_buffer_(VkCommandBuffer command_buffer,
-                               uint32_t image_index)
+                                uint32_t image_index)
     {
         VkCommandBufferBeginInfo begin_info{
             .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -900,6 +903,36 @@ class vk {
         }
     }
 
+    auto create_sync_objects_()
+    {
+        VkSemaphoreCreateInfo semaphore_info{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        };
+        VkFenceCreateInfo fence_info{
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+        };
+        if (not equals(
+                VK_SUCCESS,
+                vkCreateSemaphore(device_,
+                                  std::addressof(semaphore_info),
+                                  nullptr,
+                                  std::addressof(image_available_samphore_)))
+            || not equals(
+                VK_SUCCESS,
+                vkCreateSemaphore(device_,
+                                  std::addressof(semaphore_info),
+                                  nullptr,
+                                  std::addressof(render_finished_semaphore_)))
+            || not equals(VK_SUCCESS,
+                          vkCreateFence(device_,
+                                        std::addressof(fence_info),
+                                        nullptr,
+                                        std::addressof(in_flight_fence_)))) {
+            throw std::runtime_error("failed to create semaphores!");
+        }
+    }
+
   public:
     inline vk(auto& window)
     {
@@ -915,14 +948,24 @@ class vk {
         create_framebuffers_();
         create_command_pool_();
         create_command_buffer_();
+        create_sync_objects_();
     }
 
     auto draw_frame()
     {
+        vkWaitForFences(device_,
+                        1,
+                        std::addressof(in_flight_fence_),
+                        VK_TRUE,
+                        UINT64_MAX);
+        vkResetFences(device_, 1, std::addressof(in_flight_fence_));
     }
 
     inline ~vk()
     {
+        vkDestroySemaphore(device_, image_available_samphore_, nullptr);
+        vkDestroySemaphore(device_, render_finished_semaphore_, nullptr);
+        vkDestroyFence(device_, in_flight_fence_, nullptr);
         vkDestroyCommandPool(device_, command_pool_, nullptr);
         ranges::for_each(
             swap_chain_framebuffers_,
