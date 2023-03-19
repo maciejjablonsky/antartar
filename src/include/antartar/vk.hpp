@@ -23,7 +23,8 @@ auto modulo_increment(std::integral auto v, std::integral auto range)
     return (v + 1) % range;
 }
 
-auto to_uint32_t(std::convertible_to<uint32_t> auto v) -> uint32_t {
+auto to_uint32_t(std::convertible_to<uint32_t> auto v) -> uint32_t
+{
     return static_cast<uint32_t>(v);
 }
 
