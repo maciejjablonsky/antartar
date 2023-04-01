@@ -11,8 +11,8 @@
 #include <vector>
 
 namespace antartar::vk {
-auto equals(auto lhs, auto rhs) -> bool
-    requires std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
+auto equals(auto lhs, auto rhs) -> bool requires
+    std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
                                            std::remove_cvref_t<decltype(rhs)>>
 {
     return lhs == rhs;
@@ -92,8 +92,9 @@ struct swap_chain_support_details {
     std::vector<VkPresentModeKHR> present_modes;
 };
 
-class vk {
+template<typename WindowT> class vk {
   private:
+    std::reference_wrapper<WindowT> window_;
     VkInstance instance_                      = VK_NULL_HANDLE;
     VkDebugUtilsMessengerEXT debug_messenger_ = VK_NULL_HANDLE;
     VkSurfaceKHR surface_                     = VK_NULL_HANDLE;
@@ -360,8 +361,8 @@ class vk {
             .pQueueCreateInfos = queue_create_infos.data(),
             .enabledExtensionCount =
                 static_cast<uint32_t>(device_extensions.size()),
-            .pEnabledFeatures  = std::addressof(device_features),
-            .ppEnabledExtensionNames = device_extensions.data()
+            .ppEnabledExtensionNames = device_extensions.data(),
+            .pEnabledFeatures        = std::addressof(device_features),
 
         };
         if (enable_validation_layers) {
@@ -391,11 +392,11 @@ class vk {
                          std::addressof(present_queue_));
     }
 
-    inline auto create_surface_(auto& window)
+    inline auto create_surface_()
     {
         if (VK_SUCCESS
             != glfwCreateWindowSurface(instance_,
-                                       window,
+                                       window_.get(),
                                        nullptr,
                                        std::addressof(surface_))) {
             throw std::runtime_error(
@@ -507,7 +508,7 @@ class vk {
         }
     }
 
-    inline auto create_swap_chain_(auto& window)
+    inline auto create_swap_chain_()
     {
         auto swap_chain_support = query_swap_chain_support_(physical_device_);
 
@@ -516,7 +517,7 @@ class vk {
         auto present_mode =
             choose_swap_present_mode_(swap_chain_support.present_modes);
         auto extent =
-            choose_swap_extent_(swap_chain_support.capabilities, window);
+            choose_swap_extent_(swap_chain_support.capabilities, window_.get());
 
         // minimum + one more so we dont wait on the driver
         auto image_count = swap_chain_support.capabilities.minImageCount + 1;
@@ -982,14 +983,14 @@ class vk {
     }
 
   public:
-    inline vk(auto& window)
+    inline vk(WindowT& window) : window_{window}
     {
         create_vk_instance_();
         setup_debug_messenger_();
-        create_surface_(window);
+        create_surface_();
         pick_physical_device_();
         create_logical_device_();
-        create_swap_chain_(window);
+        create_swap_chain_();
         create_image_views_();
         create_render_pass_();
         create_graphics_pipeline_();

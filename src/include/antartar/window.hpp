@@ -50,7 +50,7 @@ class window {
   private:
     scoped_glfw3 glfw_;
     scoped_glfw3_window glfw_window_;
-    vk::vk vulkan_;
+    vk::vk<scoped_glfw3_window> vulkan_;
 
   public:
     inline window(auto width, auto height, const std::string& title)
