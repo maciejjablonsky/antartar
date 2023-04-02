@@ -34,3 +34,6 @@ target_link_libraries(antartar PRIVATE range-v3::range-v3)
 
 find_package(tl-expected REQUIRED CONFIG)
 target_link_libraries(antartar PRIVATE tl::expected)
+
+find_package(glm REQUIRED CONFIG)
+target_link_libraries(antartar PRIVATE glm::glm)

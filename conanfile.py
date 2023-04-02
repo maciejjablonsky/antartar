@@ -130,6 +130,7 @@ class AntartarConanFile(ConanFile):
             self.requires("vulkan-validationlayers/1.3.231.1")
         self.requires("shaderc/2021.1")
         self.requires("tl-expected/20190710")
+        self.requires("glm/cci.20230113")
 
     def _build_shaders(self):
         # lame but enough way to deal with compilation

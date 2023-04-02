@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <antartar/file.hpp>
 #include <antartar/log.hpp>
+#include <glm/glm.hpp>
 #include <gsl/gsl>
 #include <optional>
 #include <range/v3/all.hpp>
@@ -12,9 +13,9 @@
 #include <vector>
 
 namespace antartar::vk {
-auto equals(auto lhs, auto rhs) -> bool
-    requires std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
-                                           std::remove_cvref_t<decltype(rhs)>>
+auto equals(auto lhs, auto rhs) -> bool requires
+    std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
+                                  std::remove_cvref_t<decltype(rhs)>>
 {
     return lhs == rhs;
 }
@@ -96,6 +97,40 @@ struct swap_chain_support_details {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> present_modes;
+};
+
+struct vertex {
+    glm::vec2 pos;
+    glm::vec3 color;
+
+    static auto get_binding_description() -> VkVertexInputBindingDescription
+    {
+        return {.binding   = 0,
+                .stride    = sizeof(vertex),
+                .inputRate = VK_VERTEX_INPUT_RATE_VERTEX};
+    }
+
+    static auto get_attribute_descriptions()
+    {
+        VkVertexInputAttributeDescription position_attribute{
+            .location = 0,
+            .binding  = 0,
+            .format   = VK_FORMAT_R32G32_SFLOAT,
+            .offset   = offsetof(vertex, pos)};
+        VkVertexInputAttributeDescription color_attribute{
+            .location = 1,
+            .binding  = 0,
+            .format   = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset   = offsetof(vertex, color)};
+        std::array attributes = {position_attribute, color_attribute};
+        return attributes;
+    }
+};
+
+const std::vector<vertex> vertices = {
+    { {0.f, -0.5f}, {1.f, 0.f, 0.f}},
+    { {0.5f, 0.5f}, {0.f, 1.f, 0.f}},
+    {{-0.5f, 0.5f}, {0.f, 0.f, 1.f}}
 };
 
 template<typename WindowT> class vk {
@@ -663,13 +698,16 @@ template<typename WindowT> class vk {
         std::array shader_stages = {vert_shader_stage_info,
                                     frag_shader_stage_info};
 
-        VkPipelineVertexInputStateCreateInfo vertex_input_info{};
-        vertex_input_info.sType =
-            VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertex_input_info.vertexBindingDescriptionCount   = 0;
-        vertex_input_info.pVertexBindingDescriptions      = nullptr;
-        vertex_input_info.vertexAttributeDescriptionCount = 0;
-        vertex_input_info.pVertexAttributeDescriptions    = nullptr;
+        auto binding_description    = vertex::get_binding_description();
+        auto attribute_descriptions = vertex::get_attribute_descriptions();
+        VkPipelineVertexInputStateCreateInfo vertex_input_info{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+            .vertexBindingDescriptionCount = 1u,
+            .pVertexBindingDescriptions = std::addressof(binding_description),
+            .vertexAttributeDescriptionCount =
+                to_uint32_t(attribute_descriptions.size()),
+            .pVertexAttributeDescriptions = attribute_descriptions.data(),
+        };
 
         VkPipelineInputAssemblyStateCreateInfo input_assembly{};
         input_assembly.sType =
