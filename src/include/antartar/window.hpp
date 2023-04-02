@@ -28,7 +28,7 @@ class scoped_glfw3_window {
         glfwWindowHint(
             GLFW_CLIENT_API,
             GLFW_NO_API); // make glfw skip creating default openGL context
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
         window_ = glfwCreateWindow(args..., nullptr, nullptr);
         if (nullptr == window_) {
             throw std::runtime_error(
@@ -46,6 +46,14 @@ class scoped_glfw3_window {
     }
 };
 
+static void
+framebuffer_resize_callback(GLFWwindow* window, int width, int height)
+{
+    auto vk = reinterpret_cast<vk::vk<scoped_glfw3_window>*>(
+        glfwGetWindowUserPointer(window));
+    vk->notify_frame_buffer_resized();
+}
+
 class window {
   private:
     scoped_glfw3 glfw_;
@@ -57,6 +65,9 @@ class window {
         : glfw_window_(width, height, title.c_str()),
           vulkan_(glfw_window_)
     {
+        glfwSetWindowUserPointer(glfw_window_, std::addressof(vulkan_));
+        glfwSetFramebufferSizeCallback(glfw_window_,
+                                       framebuffer_resize_callback);
     }
 
     auto draw_frame() { vulkan_.draw_frame(); }

@@ -122,7 +122,8 @@ template<typename WindowT> class vk {
     std::pmr::vector<VkSemaphore> image_available_samphores_;
     std::pmr::vector<VkSemaphore> render_finished_semaphores_;
     std::pmr::vector<VkFence> in_flight_fences_;
-    uint32_t current_frame_ = 0;
+    uint32_t current_frame_    = 0;
+    bool frame_buffer_resized_ = false;
 
     inline bool check_validation_layer_support_()
     {
@@ -988,6 +989,41 @@ template<typename WindowT> class vk {
         }
     }
 
+    void cleanup_swap_chain_()
+    {
+        ranges::for_each(
+            swap_chain_framebuffers_,
+            [this](VkFramebuffer framebuffer) {
+                vkDestroyFramebuffer(device_, framebuffer, nullptr);
+            });
+        ranges::for_each(swap_chain_image_views_,
+                         [this](const VkImageView& image_view) {
+                             vkDestroyImageView(device_, image_view, nullptr);
+                         });
+        vkDestroySwapchainKHR(device_, swap_chain_, nullptr);
+    }
+
+    void recreate_swap_chain_()
+    {
+        int width = 0, height = 0;
+        glfwGetFramebufferSize(window_.get(),
+                               std::addressof(width),
+                               std::addressof(height));
+        while (equals(width, 0) or equals(height, 0)) {
+            glfwGetFramebufferSize(window_.get(),
+                                   std::addressof(width),
+                                   std::addressof(height));
+            glfwWaitEvents();
+        }
+        vkDeviceWaitIdle(device_);
+
+        cleanup_swap_chain_();
+
+        create_swap_chain_();
+        create_image_views_();
+        create_framebuffers_();
+    }
+
   public:
     inline vk(WindowT& window) : window_{window}
     {
@@ -1013,17 +1049,26 @@ template<typename WindowT> class vk {
                         std::addressof(in_flight_fences_.at(current_frame_)),
                         VK_TRUE,
                         UINT64_MAX);
+        uint32_t image_index{};
+        VkResult result =
+            vkAcquireNextImageKHR(device_,
+                                  swap_chain_,
+                                  UINT64_MAX,
+                                  image_available_samphores_.at(current_frame_),
+                                  VK_NULL_HANDLE,
+                                  std::addressof(image_index));
+        if (one_of(result, VK_ERROR_OUT_OF_DATE_KHR)) {
+            recreate_swap_chain_();
+            return;
+        }
+        else if (not one_of(result, VK_SUCCESS, VK_SUBOPTIMAL_KHR)) {
+            throw std::runtime_error("failed to acquire swap chain image!");
+        }
+
         vkResetFences(device_,
                       1,
                       std::addressof(in_flight_fences_.at(current_frame_)));
 
-        uint32_t image_index{};
-        vkAcquireNextImageKHR(device_,
-                              swap_chain_,
-                              UINT64_MAX,
-                              image_available_samphores_.at(current_frame_),
-                              VK_NULL_HANDLE,
-                              std::addressof(image_index));
         vkResetCommandBuffer(command_buffers_.at(current_frame_), 0);
         record_command_buffer_(command_buffers_.at(current_frame_),
                                image_index);
@@ -1062,7 +1107,17 @@ template<typename WindowT> class vk {
             .pSwapchains        = swap_chains.data(),
             .pImageIndices      = std::addressof(image_index),
             .pResults           = nullptr};
-        vkQueuePresentKHR(present_queue_, std::addressof(present_info));
+        result =
+            vkQueuePresentKHR(present_queue_, std::addressof(present_info));
+        if (one_of(result, VK_ERROR_OUT_OF_DATE_KHR, VK_SUBOPTIMAL_KHR)
+            or frame_buffer_resized_) {
+            frame_buffer_resized_ = false;
+            recreate_swap_chain_();
+        }
+        else if (not equals(result, VK_SUCCESS)) {
+            throw std::runtime_error("failed to present swap chain image!");
+        }
+
         current_frame_ = modulo_increment(current_frame_, max_frames_in_flight);
     }
 
@@ -1070,29 +1125,21 @@ template<typename WindowT> class vk {
 
     inline ~vk()
     {
-        ranges::for_each(image_available_samphores_, [this](VkSemaphore s) {
+        cleanup_swap_chain_();
+
+        vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
+        vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
+        vkDestroyRenderPass(device_, render_pass_, nullptr);
+        ranges::for_each(render_finished_semaphores_, [this](VkSemaphore s) {
             vkDestroySemaphore(device_, s, nullptr);
         });
-        ranges::for_each(render_finished_semaphores_, [this](VkSemaphore s) {
+        ranges::for_each(image_available_samphores_, [this](VkSemaphore s) {
             vkDestroySemaphore(device_, s, nullptr);
         });
         ranges::for_each(in_flight_fences_, [this](VkFence f) {
             vkDestroyFence(device_, f, nullptr);
         });
         vkDestroyCommandPool(device_, command_pool_, nullptr);
-        ranges::for_each(
-            swap_chain_framebuffers_,
-            [this](VkFramebuffer framebuffer) {
-                vkDestroyFramebuffer(device_, framebuffer, nullptr);
-            });
-        vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
-        vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
-        vkDestroyRenderPass(device_, render_pass_, nullptr);
-        ranges::for_each(swap_chain_image_views_,
-                         [this](const VkImageView& image_view) {
-                             vkDestroyImageView(device_, image_view, nullptr);
-                         });
-        vkDestroySwapchainKHR(device_, swap_chain_, nullptr);
         vkDestroyDevice(device_, nullptr);
         if (enable_validation_layers) {
             DestroyDebugUtilsMessengerEXT(instance_, debug_messenger_, nullptr);
@@ -1100,5 +1147,7 @@ template<typename WindowT> class vk {
         vkDestroySurfaceKHR(instance_, surface_, nullptr);
         vkDestroyInstance(instance_, nullptr);
     }
+
+    auto notify_frame_buffer_resized() { frame_buffer_resized_ = true; }
 };
 } // namespace antartar::vk
