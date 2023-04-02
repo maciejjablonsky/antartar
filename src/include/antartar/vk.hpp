@@ -1,4 +1,5 @@
 #pragma once
+#include <type_traits>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <antartar/file.hpp>
@@ -11,8 +12,8 @@
 #include <vector>
 
 namespace antartar::vk {
-auto equals(auto lhs, auto rhs) -> bool requires
-    std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
+auto equals(auto lhs, auto rhs) -> bool
+    requires std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
                                            std::remove_cvref_t<decltype(rhs)>>
 {
     return lhs == rhs;
