@@ -28,6 +28,11 @@ auto to_uint32_t(std::convertible_to<uint32_t> auto v) -> uint32_t
     return static_cast<uint32_t>(v);
 }
 
+bool one_of(const auto& value, auto... values)
+{
+    return ((value == values) || ...);
+}
+
 constexpr std::array validation_layers = {"VK_LAYER_KHRONOS_validation"};
 
 constexpr std::array device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
