@@ -128,10 +128,13 @@ struct vertex {
 };
 
 const std::vector<vertex> vertices = {
-    { {0.f, -0.5f}, {1.f, 0.f, 0.f}},
-    { {0.5f, 0.5f}, {0.f, 1.f, 0.f}},
-    {{-0.5f, 0.5f}, {0.f, 0.f, 1.f}}
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    { {0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+    {  {0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    { {-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
 };
+
+const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
 template<typename WindowT> class vk {
   private:
@@ -155,6 +158,8 @@ template<typename WindowT> class vk {
     VkCommandPool command_pool_;
     VkBuffer vertex_buffer_;
     VkDeviceMemory vertex_buffer_memory_;
+    VkBuffer index_buffer_;
+    VkDeviceMemory index_buffer_memory_;
     std::pmr::vector<VkCommandBuffer> command_buffers_;
     std::pmr::vector<VkSemaphore> image_available_samphores_;
     std::pmr::vector<VkSemaphore> render_finished_semaphores_;
@@ -987,8 +992,12 @@ template<typename WindowT> class vk {
         VkBuffer vertex_buffers[] = {vertex_buffer_};
         VkDeviceSize offsets[]    = {0};
         vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
+        vkCmdBindIndexBuffer(command_buffer,
+                             index_buffer_,
+                             0,
+                             VK_INDEX_TYPE_UINT16);
 
-        vkCmdDraw(command_buffer, to_uint32_t(vertices.size()), 1, 0, 0);
+        vkCmdDrawIndexed(command_buffer, to_uint32_t(indices.size()), 1, 0, 0, 0);
         vkCmdEndRenderPass(command_buffer);
         if (not equals(VK_SUCCESS, vkEndCommandBuffer(command_buffer))) {
             throw std::runtime_error("failed to record command buffer!");
@@ -1208,6 +1217,39 @@ template<typename WindowT> class vk {
         vkFreeMemory(device_, staging_buffer_memory, nullptr);
     }
 
+    auto create_index_buffer_()
+    {
+        VkDeviceSize buffer_size =
+            sizeof(decltype(indices)::value_type) * indices.size();
+        VkBuffer staging_buffer;
+        VkDeviceMemory staging_buffer_memory;
+        create_buffer_(buffer_size,
+                       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                           | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                       staging_buffer,
+                       staging_buffer_memory);
+
+        void* data = nullptr;
+        vkMapMemory(device_,
+                    staging_buffer_memory,
+                    0,
+                    buffer_size,
+                    0,
+                    std::addressof(data));
+        std::memcpy(data, indices.data(), buffer_size);
+        vkUnmapMemory(device_, staging_buffer_memory);
+
+        create_buffer_(buffer_size,
+                       VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                           | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                       index_buffer_,
+                       index_buffer_memory_);
+        copy_buffer_(staging_buffer, index_buffer_, buffer_size);
+        vkDestroyBuffer(device_, staging_buffer, nullptr);
+    }
+
   public:
     inline vk(WindowT& window) : window_{window}
     {
@@ -1223,6 +1265,7 @@ template<typename WindowT> class vk {
         create_framebuffers_();
         create_command_pool_();
         create_vertex_buffer_();
+        create_index_buffer_();
         create_command_buffers_();
         create_sync_objects_();
     }
@@ -1315,8 +1358,13 @@ template<typename WindowT> class vk {
         vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
         vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
         vkDestroyRenderPass(device_, render_pass_, nullptr);
+
+        vkDestroyBuffer(device_, index_buffer_, nullptr);
+        vkFreeMemory(device_, index_buffer_memory_, nullptr);
+
         vkDestroyBuffer(device_, vertex_buffer_, nullptr);
         vkFreeMemory(device_, vertex_buffer_memory_, nullptr);
+
         ranges::for_each(render_finished_semaphores_, [this](VkSemaphore s) {
             vkDestroySemaphore(device_, s, nullptr);
         });
