@@ -984,7 +984,11 @@ template<typename WindowT> class vk {
         };
         vkCmdSetScissor(command_buffer, 0, 1, std::addressof(scissor));
 
-        vkCmdDraw(command_buffer, 3, 1, 0, 0);
+        VkBuffer vertex_buffers[] = {vertex_buffer_};
+        VkDeviceSize offsets[]    = {0};
+        vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
+
+        vkCmdDraw(command_buffer, to_uint32_t(vertices.size()), 1, 0, 0);
         vkCmdEndRenderPass(command_buffer);
         if (not equals(VK_SUCCESS, vkEndCommandBuffer(command_buffer))) {
             throw std::runtime_error("failed to record command buffer!");
@@ -1125,6 +1129,16 @@ template<typename WindowT> class vk {
         }
 
         vkBindBufferMemory(device_, vertex_buffer_, vertex_buffer_memory_, 0);
+
+        void* data = nullptr;
+        vkMapMemory(device_,
+                    vertex_buffer_memory_,
+                    0,
+                    buffer_info.size,
+                    0,
+                    std::addressof(data));
+        std::memcpy(data, vertices.data(), to_uint32_t(buffer_info.size));
+        vkUnmapMemory(device_, vertex_buffer_memory_);
     }
 
   public:
