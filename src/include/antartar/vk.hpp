@@ -154,6 +154,7 @@ template<typename WindowT> class vk {
     std::pmr::vector<VkFramebuffer> swap_chain_framebuffers_{};
     VkCommandPool command_pool_;
     VkBuffer vertex_buffer_;
+    VkDeviceMemory vertex_buffer_memory_;
     std::pmr::vector<VkCommandBuffer> command_buffers_;
     std::pmr::vector<VkSemaphore> image_available_samphores_;
     std::pmr::vector<VkSemaphore> render_finished_semaphores_;
@@ -1063,6 +1064,25 @@ template<typename WindowT> class vk {
         create_framebuffers_();
     }
 
+    uint32_t find_memory_type_(uint32_t type_filter,
+                               VkMemoryPropertyFlags properties)
+    {
+        VkPhysicalDeviceMemoryProperties memory_properties;
+        vkGetPhysicalDeviceMemoryProperties(physical_device_,
+                                            std::addressof(memory_properties));
+
+        for (uint32_t i = 0; i < memory_properties.memoryTypeCount; ++i) {
+            if ((type_filter & (1 << i))
+                and ((memory_properties.memoryTypes[i].propertyFlags
+                      & properties)
+                     == properties)) {
+                return i;
+            }
+        }
+
+        throw std::runtime_error("failed to find suitable memory type!");
+    }
+
     auto create_vertex_buffer_()
     {
         VkBufferCreateInfo buffer_info{
@@ -1079,6 +1099,32 @@ template<typename WindowT> class vk {
                                       std::addressof(vertex_buffer_)))) {
             throw std::runtime_error("failed to create vertex buffer!");
         }
+
+        VkMemoryRequirements memory_requirements;
+        vkGetBufferMemoryRequirements(device_,
+                                      vertex_buffer_,
+                                      std::addressof(memory_requirements));
+
+        VkMemoryAllocateInfo alloc_info{
+            .sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = memory_requirements.size,
+            .memoryTypeIndex =
+                find_memory_type_(memory_requirements.memoryTypeBits,
+                                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+        };
+
+        if (not equals(
+                VK_SUCCESS,
+                vkAllocateMemory(device_,
+                                 std::addressof(alloc_info),
+                                 nullptr,
+                                 std::addressof(vertex_buffer_memory_)))) {
+            throw std::runtime_error(
+                "failed to allocate vertex buffer memory!");
+        }
+
+        vkBindBufferMemory(device_, vertex_buffer_, vertex_buffer_memory_, 0);
     }
 
   public:
@@ -1189,6 +1235,7 @@ template<typename WindowT> class vk {
         vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
         vkDestroyRenderPass(device_, render_pass_, nullptr);
         vkDestroyBuffer(device_, vertex_buffer_, nullptr);
+        vkFreeMemory(device_, vertex_buffer_memory_, nullptr);
         ranges::for_each(render_finished_semaphores_, [this](VkSemaphore s) {
             vkDestroySemaphore(device_, s, nullptr);
         });
