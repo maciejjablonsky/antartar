@@ -13,9 +13,9 @@
 #include <vector>
 
 namespace antartar::vk {
-auto equals(auto lhs, auto rhs) -> bool requires
-    std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
-                                  std::remove_cvref_t<decltype(rhs)>>
+auto equals(auto lhs, auto rhs) -> bool
+    requires std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
+                                           std::remove_cvref_t<decltype(rhs)>>
 {
     return lhs == rhs;
 }
@@ -153,6 +153,7 @@ template<typename WindowT> class vk {
     VkPipeline graphics_pipeline_;
     std::pmr::vector<VkFramebuffer> swap_chain_framebuffers_{};
     VkCommandPool command_pool_;
+    VkBuffer vertex_buffer_;
     std::pmr::vector<VkCommandBuffer> command_buffers_;
     std::pmr::vector<VkSemaphore> image_available_samphores_;
     std::pmr::vector<VkSemaphore> render_finished_semaphores_;
@@ -1062,6 +1063,24 @@ template<typename WindowT> class vk {
         create_framebuffers_();
     }
 
+    auto create_vertex_buffer_()
+    {
+        VkBufferCreateInfo buffer_info{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size  = sizeof(decltype(vertices)::value_type) * vertices.size(),
+            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        };
+
+        if (not equals(VK_SUCCESS,
+                       vkCreateBuffer(device_,
+                                      std::addressof(buffer_info),
+                                      nullptr,
+                                      std::addressof(vertex_buffer_)))) {
+            throw std::runtime_error("failed to create vertex buffer!");
+        }
+    }
+
   public:
     inline vk(WindowT& window) : window_{window}
     {
@@ -1076,6 +1095,7 @@ template<typename WindowT> class vk {
         create_graphics_pipeline_();
         create_framebuffers_();
         create_command_pool_();
+        create_vertex_buffer_();
         create_command_buffers_();
         create_sync_objects_();
     }
@@ -1168,6 +1188,7 @@ template<typename WindowT> class vk {
         vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
         vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
         vkDestroyRenderPass(device_, render_pass_, nullptr);
+        vkDestroyBuffer(device_, vertex_buffer_, nullptr);
         ranges::for_each(render_finished_semaphores_, [this](VkSemaphore s) {
             vkDestroySemaphore(device_, s, nullptr);
         });
