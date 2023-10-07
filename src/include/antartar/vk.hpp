@@ -1,21 +1,27 @@
 #pragma once
-#include <type_traits>
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <antartar/file.hpp>
 #include <antartar/log.hpp>
-#include <glm/glm.hpp>
+#include <chrono>
 #include <gsl/gsl>
 #include <optional>
 #include <range/v3/all.hpp>
 #include <set>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace antartar::vk {
-auto equals(auto lhs, auto rhs) -> bool
-    requires std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
-                                           std::remove_cvref_t<decltype(rhs)>>
+auto equals(auto lhs, auto rhs) -> bool requires
+    std::equality_comparable_with<std::remove_cvref_t<decltype(lhs)>,
+                                  std::remove_cvref_t<decltype(rhs)>>
 {
     return lhs == rhs;
 }
@@ -23,6 +29,11 @@ auto equals(auto lhs, auto rhs) -> bool
 auto modulo_increment(std::integral auto v, std::integral auto range)
 {
     return (v + 1) % range;
+}
+
+template<typename ToT, typename FromT> auto to(FromT&& from) -> ToT
+{
+    return static_cast<ToT>(std::forward<FromT>(from));
 }
 
 auto to_uint32_t(std::convertible_to<uint32_t> auto v) -> uint32_t
@@ -127,6 +138,12 @@ struct vertex {
     }
 };
 
+struct uniform_buffer_object {
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+};
+
 const std::vector<vertex> vertices = {
     {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
     { {0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
@@ -152,6 +169,7 @@ template<typename WindowT> class vk {
     VkExtent2D swap_chain_extent_{};
     std::pmr::vector<VkImageView> swap_chain_image_views_{};
     VkRenderPass render_pass_;
+    VkDescriptorSetLayout descriptor_set_layout_;
     VkPipelineLayout pipeline_layout_;
     VkPipeline graphics_pipeline_;
     std::pmr::vector<VkFramebuffer> swap_chain_framebuffers_{};
@@ -160,6 +178,11 @@ template<typename WindowT> class vk {
     VkDeviceMemory vertex_buffer_memory_;
     VkBuffer index_buffer_;
     VkDeviceMemory index_buffer_memory_;
+
+    std::pmr::vector<VkBuffer> uniform_buffers_;
+    std::pmr::vector<VkDeviceMemory> uniform_buffers_memory_;
+    std::pmr::vector<void*> uniform_buffers_mapped_;
+
     std::pmr::vector<VkCommandBuffer> command_buffers_;
     std::pmr::vector<VkSemaphore> image_available_samphores_;
     std::pmr::vector<VkSemaphore> render_finished_semaphores_;
@@ -786,8 +809,9 @@ template<typename WindowT> class vk {
         VkPipelineLayoutCreateInfo pipeline_layout_info{};
         pipeline_layout_info.sType =
             VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipeline_layout_info.setLayoutCount         = 0;
-        pipeline_layout_info.pSetLayouts            = nullptr;
+        pipeline_layout_info.setLayoutCount = 1;
+        pipeline_layout_info.pSetLayouts =
+            std::addressof(descriptor_set_layout_);
         pipeline_layout_info.pushConstantRangeCount = 0;
         pipeline_layout_info.pPushConstantRanges    = nullptr;
 
@@ -997,7 +1021,12 @@ template<typename WindowT> class vk {
                              0,
                              VK_INDEX_TYPE_UINT16);
 
-        vkCmdDrawIndexed(command_buffer, to_uint32_t(indices.size()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(command_buffer,
+                         to_uint32_t(indices.size()),
+                         1,
+                         0,
+                         0,
+                         0);
         vkCmdEndRenderPass(command_buffer);
         if (not equals(VK_SUCCESS, vkEndCommandBuffer(command_buffer))) {
             throw std::runtime_error("failed to record command buffer!");
@@ -1250,6 +1279,80 @@ template<typename WindowT> class vk {
         vkDestroyBuffer(device_, staging_buffer, nullptr);
     }
 
+    auto create_descriptor_set_layout_()
+    {
+        VkDescriptorSetLayoutBinding ubo_layout_binding{
+            .binding            = 0,
+            .descriptorCount    = 1,
+            .descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pImmutableSamplers = nullptr,
+            .stageFlags         = VK_SHADER_STAGE_VERTEX_BIT,
+        };
+        VkDescriptorSetLayoutCreateInfo layout_info{
+            .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = 1,
+            .pBindings    = std::addressof(ubo_layout_binding),
+        };
+        if (not equals(VK_SUCCESS,
+                       vkCreateDescriptorSetLayout(
+                           device_,
+                           std::addressof(layout_info),
+                           nullptr,
+                           std::addressof(descriptor_set_layout_)))) {
+            throw std::runtime_error("failed to create descriptor set layout!");
+        }
+    }
+
+    auto create_uniform_buffers_()
+    {
+        VkDeviceSize buffer_size = sizeof(uniform_buffer_object);
+
+        uniform_buffers_.resize(max_frames_in_flight);
+        uniform_buffers_memory_.resize(max_frames_in_flight);
+        uniform_buffers_mapped_.resize(max_frames_in_flight);
+
+        for (size_t i = 0; i < max_frames_in_flight; ++i) {
+            create_buffer_(buffer_size,
+                           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                               | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                           uniform_buffers_[i],
+                           uniform_buffers_memory_[i]);
+            vkMapMemory(device_,
+                        uniform_buffers_memory_[i],
+                        0,
+                        buffer_size,
+                        0,
+                        std::addressof(uniform_buffers_mapped_[i]));
+        }
+    }
+
+    auto update_uniform_buffer(uint32_t current_image)
+    {
+        static auto start_time = std::chrono::high_resolution_clock::now();
+        auto current_time      = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(
+                         current_time - start_time)
+                         .count();
+        uniform_buffer_object ubo{
+            .model = glm::rotate(glm::mat4(1.f),
+                                 time * glm::radians(90.f),
+                                 glm::vec3(0.f, 0.f, 1.f)),
+            .view  = glm::lookAt(glm::vec3(2.f, 2.f, 2.f),
+                                glm::vec3(0.f, 0.f, 0.f),
+                                glm::vec3(0.f, 0.f, 1.f)),
+            .proj  = glm::perspective(glm::radians(45.f),
+                                     swap_chain_extent_.width
+                                         / (float)swap_chain_extent_.height,
+                                     0.1f,
+                                     10.f),
+        };
+        ubo.proj[1][1] *= -1;
+        std::copy(std::addressof(ubo),
+                  std::addressof(ubo) + sizeof(ubo),
+                  uniform_buffers_mapped_[current_image]);
+    }
+
   public:
     inline vk(WindowT& window) : window_{window}
     {
@@ -1261,11 +1364,13 @@ template<typename WindowT> class vk {
         create_swap_chain_();
         create_image_views_();
         create_render_pass_();
+        create_descriptor_set_layout_();
         create_graphics_pipeline_();
         create_framebuffers_();
         create_command_pool_();
         create_vertex_buffer_();
         create_index_buffer_();
+        create_uniform_buffers_();
         create_command_buffers_();
         create_sync_objects_();
     }
@@ -1292,6 +1397,7 @@ template<typename WindowT> class vk {
         else if (not one_of(result, VK_SUCCESS, VK_SUBOPTIMAL_KHR)) {
             throw std::runtime_error("failed to acquire swap chain image!");
         }
+        update_uniform_buffer(current_frame_);
 
         vkResetFences(device_,
                       1,
@@ -1358,6 +1464,14 @@ template<typename WindowT> class vk {
         vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
         vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
         vkDestroyRenderPass(device_, render_pass_, nullptr);
+
+        ranges::for_each(uniform_buffers_, [this](auto ub) {
+            vkDestroyBuffer(device_, ub, nullptr);
+        });
+        ranges::for_each(uniform_buffers_memory_, [this](auto ubm) {
+            vkFreeMemory(device_, ubm, nullptr);
+        });
+        vkDestroyDescriptorSetLayout(device_, descriptor_set_layout_, nullptr);
 
         vkDestroyBuffer(device_, index_buffer_, nullptr);
         vkFreeMemory(device_, index_buffer_memory_, nullptr);
