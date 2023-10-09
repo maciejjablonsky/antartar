@@ -7,7 +7,6 @@ import os
 class AntartarConanFile(ConanFile):
     name = "antartar"
     settings = "os", "arch", "compiler", "build_type"
-    generators = "CMakeToolchain", "CMakeDeps"
 
     @property
     def _is_debug(self):
@@ -80,7 +79,7 @@ class AntartarConanFile(ConanFile):
     def _add_cmake_executable_to_cmake_presets(self, cmake_presets_path):
         cmake_presets = self._load_json_from_file(cmake_presets_path)
 
-        cmake_path = self.deps_env_info["cmake"].path[0]
+        cmake_path = self.dependencies.build["cmake"].cpp_info.bindirs[0]
         self.output.info(
             f'Setting "cmakeExecutable" in {cmake_presets_path} to "{cmake_path}"'
         )
@@ -105,7 +104,7 @@ class AntartarConanFile(ConanFile):
                 value="VK_LAYER_LUNARG_api_dump;VK_LAYER_KHRONOS_validation",
             )
             validation_layers_path = os.path.normpath(
-                self.deps_cpp_info["vulkan-validationlayers"].bin_paths[0]
+                self.dependencies['vulkan-validationlayers'].cpp_info.bindirs[0]
             )
             self._add_env_variable_to_cmake_presets(
                 cmake_presets_path,
@@ -117,17 +116,17 @@ class AntartarConanFile(ConanFile):
         cmake_layout(self)
 
     def build_requirements(self):
-        self.build_requires("cmake/[>=3.24]")
+        self.tool_requires("cmake/[>=3.24]")
 
     def requirements(self):
         self.requires("fmt/9.1.0")
         self.requires("glfw/3.3.8")
         self.requires("ms-gsl/4.0.0")
         self.requires("range-v3/0.12.0")
-        self.requires("vulkan-loader/1.3.231.1")
-        self.requires("spirv-tools/1.3.231.1")
+        self.requires("vulkan-loader/1.3.239.0")
+        self.requires("spirv-tools/1.3.239.0")
         if self.settings.build_type == "Debug":
-            self.requires("vulkan-validationlayers/1.3.231.1")
+            self.requires("vulkan-validationlayers/1.3.239.0")
         self.requires("shaderc/2021.1")
         self.requires("tl-expected/20190710")
         self.requires("glm/cci.20230113")
@@ -156,8 +155,6 @@ class AntartarConanFile(ConanFile):
 
     def build(self):
         cmake = CMake(self)
-        if self.should_configure:
-            cmake.configure()
-        if self.should_build:
-            self._build_shaders()
-            cmake.build()
+        cmake.configure()
+        self._build_shaders()
+        cmake.build()
